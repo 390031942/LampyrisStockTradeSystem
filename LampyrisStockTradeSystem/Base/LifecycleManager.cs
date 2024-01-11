@@ -3,10 +3,14 @@
 ** Contact: gameta@qq.com
 ** Description: 生命周期管理相关的实现，适用于每个子系统。
 */
-using System.Reflection;
 
 namespace LampyrisStockTradeSystem;
 
+using System.Reflection;
+
+// 所有实现ILifecycle接口的类，都会被LifecycleManager创建一个唯一的实例
+// 并对他们的生命周期进行管理，此外，你可以通过以下方法来访问一个实例，代码如下：
+// LifecycleManager.Instance.Get<>
 public interface ILifecycle
 {
     public void OnStart();

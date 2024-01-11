@@ -1,20 +1,28 @@
-﻿using ImGuiNET;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 资源管理系统，负责纹理资源，字体资源的卸载
+*  TODO: 实现资源引用计数；提供卸载未使用资源的方法
+*/
+namespace LampyrisStockTradeSystem;
+
+using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using System;
 using System.Collections.Generic;
 using System.Drawing.Imaging;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
-
-namespace LampyrisStockTradeSystem;
 
 public static class Resources
 {
     private static Dictionary<string,int>  ms_resPath2resIdDict = new Dictionary<string,int>();
     private static Dictionary<int, string> ms_resId2resPathDict = new Dictionary<int, string>();
 
+    /// <summary>
+    /// 加载一个纹理资源
+    /// </summary>
+    /// <param name="path">纹理所在的路径</param>
+    /// <returns>OpenGL纹理ID</returns>
     public static int LoadTexture(string path)
     {
         int textureID;
@@ -53,6 +61,10 @@ public static class Resources
         return textureID;
     }
 
+    /// <summary>
+    /// 释放一个纹理资源
+    /// </summary>
+    /// <param name="path">OpenGL纹理ID<</param>
     public static void FreeTexture(int textureID)
     {
         if(ms_resId2resPathDict.ContainsKey(textureID))
@@ -65,25 +77,28 @@ public static class Resources
         }
     }
 
+   /// <summary>
+   /// 动态加载字体
+   /// </summary>
+   /// <returns></returns>
     public unsafe static ImFontPtr LoadFont()
     {
-        // 首先，你需要创建一个字体集
+        // 创建一个字体集
         var fontAtlas = ImGui.GetIO().Fonts;
 
-        // 然后，你可以使用AddFontFromFileTTF方法来加载字体文件
-        // 注意，你需要提供字体文件的完整路径，这里假设字体文件在你的项目根目录下
+        // 加载字体文件,并设置大小
         string fontPath = Path.Combine("C:\\Windows\\Fonts", "simsun.ttc");
 
         // 加载字体并设置大小
         var font = fontAtlas.AddFontFromFileTTF(fontPath, 10);
 
-        // 如果字体加载失败，AddFontFromFileTTF方法会返回null
         if (font.NativePtr == null)
         {
-            throw new Exception($"Failed to load font at '{fontPath}'");
+            // TODO: 日志打印报错信息
+            // throw new Exception($"Failed to load font at '{fontPath}'");
         }
 
-        // 最后，你需要构建字体集
+        // 构建字体集
         fontAtlas.Build();
 
         return font;

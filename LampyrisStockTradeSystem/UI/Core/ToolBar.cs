@@ -1,6 +1,11 @@
-﻿using ImGuiNET;
-
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 主界面 底部工具栏的实现(还在探索中)
+*/
 namespace LampyrisStockTradeSystem;
+
+using ImGuiNET;
 
 public class ToolBar
 {

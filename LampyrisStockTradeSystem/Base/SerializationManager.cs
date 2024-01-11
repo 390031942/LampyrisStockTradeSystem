@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 序列化工具类，负责将App设置，股票分析数据等保存到本地磁盘
+*/
 
 namespace LampyrisStockTradeSystem;
 

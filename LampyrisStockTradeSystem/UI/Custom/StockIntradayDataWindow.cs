@@ -1,12 +1,14 @@
-﻿namespace LampyrisStockTradeSystem;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 股票分时走势窗口(占坑)
+*/
+namespace LampyrisStockTradeSystem;
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-
-internal class StockIntradayDataWindow
+public class StockIntradayDataWindow : Widget
 {
+    public override void OnGUI()
+    {
+        throw new NotImplementedException();
+    }
 }

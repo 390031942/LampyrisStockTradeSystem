@@ -1,4 +1,9 @@
-﻿namespace LampyrisStockTradeSystem;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 股票K线走势窗口(占坑)
+*/
+namespace LampyrisStockTradeSystem;
 
 using ImGuiNET;
 using Vector2 = System.Numerics.Vector2;

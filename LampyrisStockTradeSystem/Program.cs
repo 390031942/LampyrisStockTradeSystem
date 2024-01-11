@@ -5,9 +5,6 @@
 */
 namespace LampyrisStockTradeSystem;
 
-using OpenQA.Selenium;
-using OpenTK.Graphics.OpenGL4;
-
 class Program
 {
     static void Main()
@@ -31,17 +28,5 @@ class Program
         wnd.Run();
 
         LifecycleManager.Instance.ShutDown();
-    }
-}
-
-static class Error
-{
-    public static void Check()
-    {
-        ErrorCode errorCode = GL.GetError();
-        if (errorCode != ErrorCode.NoError)
-        {
-            throw new InvalidOperationException();
-        }
     }
 }

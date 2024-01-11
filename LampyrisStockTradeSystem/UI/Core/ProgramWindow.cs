@@ -2,6 +2,7 @@
 ** Author: wushuhong
 ** Contact: gameta@qq.com
 ** Description: IMGUI主窗口逻辑 
+*  Reference: https://github.com/Acruid/opentk-imgui-docking/blob/master/ImGuiNET.OpenTK.Sample/Window.cs
 */
 
 namespace LampyrisStockTradeSystem;
@@ -11,37 +12,17 @@ using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using System.Runtime.InteropServices;
-using System.Drawing;
-using System.Drawing.Imaging;
-using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
 using ImGuiNET;
-using System.Reflection;
 
-public class ProgramWindow : GameWindow
+public static class ProgramWindowDebugger
 {
-    ImGuiController _controller;
-    SceneRender _scene;
-
-    public ProgramWindow() : base(GameWindowSettings.Default, new NativeWindowSettings() { Size = new Vector2i(1600, 900), APIVersion = new Version(3, 3) })
-    { }
-
-    private static DebugProc _debugProcCallback = DebugCallback;
-    private static GCHandle _debugProcCallbackHandle;
-    private string inputText = "";
-    private static List<StockKLineData> stockDataList = new List<StockKLineData>();
-
-    private ValidCodeInputWindow validCodeInputWindow;
-
-    // 主菜单管理
-    private MenuItemManagement m_menuItemManager = new MenuItemManagement();
-
-    private static void DebugCallback(DebugSource source, 
-                                      DebugType type, 
-                                      int id,
-                                      DebugSeverity severity, 
-                                      int length, 
-                                      IntPtr message, 
-                                      IntPtr userParam)
+    public static void DebugCallback(DebugSource source,
+                                     DebugType type,
+                                     int id,
+                                     DebugSeverity severity,
+                                     int length,
+                                     IntPtr message,
+                                     IntPtr userParam)
     {
         string messageString = Marshal.PtrToStringAnsi(message, length);
         Console.WriteLine($"{severity} {type} | {messageString}");
@@ -49,12 +30,35 @@ public class ProgramWindow : GameWindow
         if (type == DebugType.DebugTypeError)
             throw new Exception(messageString);
     }
+}
 
-    void SetupDebugging()
+public class ProgramWindow : GameWindow
+{
+    private ImGuiController m_controller;
+
+    private static NativeWindowSettings ms_nativeWindowSetting => new NativeWindowSettings()
+    { 
+        Size = new Vector2i(1600, 900), 
+        APIVersion = new Version(3, 3) 
+    };
+
+    public ProgramWindow() : base(GameWindowSettings.Default, ms_nativeWindowSetting)
+    { 
+
+    }
+
+    private static DebugProc m_debugProcCallback = ProgramWindowDebugger.DebugCallback;
+
+    private static GCHandle m_debugProcCallbackHandle;
+
+    // 主菜单管理
+    private MenuItemManagement m_menuItemManager = new MenuItemManagement();
+
+    private void SetupDebugging()
     {
-        _debugProcCallbackHandle = GCHandle.Alloc(_debugProcCallback);
+        m_debugProcCallbackHandle = GCHandle.Alloc(m_debugProcCallback);
 
-        GL.DebugMessageCallback(_debugProcCallback, IntPtr.Zero);
+        GL.DebugMessageCallback(m_debugProcCallback, IntPtr.Zero);
         GL.Enable(EnableCap.DebugOutput);
         GL.Enable(EnableCap.DebugOutputSynchronous);
     }
@@ -62,18 +66,16 @@ public class ProgramWindow : GameWindow
     protected override void OnLoad()
     {
         base.OnLoad();
+
+        // 设置OpenGL Debug Log回调函数
         SetupDebugging();
 
+        // 垂直同步模式
         VSync = VSyncMode.On;
 
-        _controller = new ImGuiController(ClientSize.X, ClientSize.Y);
-        _scene = new SceneRender(this);
+        // 初始化
+        m_controller = new ImGuiController(ClientSize.X, ClientSize.Y);
         Error.Check();
-
-        validCodeInputWindow = (ValidCodeInputWindow)WidgetManagement.GetWidget<ValidCodeInputWindow>();
-        validCodeInputWindow.SetValidCodePNGFilePath("D:\\imgValidCode.png");
-
-        WidgetManagement.GetWidget<StockQuoteTableWindow>();
 
         m_menuItemManager.Scan();
     }
@@ -86,7 +88,7 @@ public class ProgramWindow : GameWindow
         GL.Viewport(0, 0, ClientSize.X, ClientSize.Y);
 
         // Tell ImGui of the new size
-        _controller.WindowResized(ClientSize.X, ClientSize.Y);
+        m_controller.WindowResized(ClientSize.X, ClientSize.Y);
     }
 
     private void DoMainMenuBar()
@@ -102,22 +104,21 @@ public class ProgramWindow : GameWindow
 
         Title = "Lampyris股票行情交易平台 OpenGL Version: " + GL.GetString(StringName.Version) + " FPS = " + (int)ImGui.GetIO().Framerate;
 
-        _controller.Update(this, (float)e.Time);
+        m_controller.Update(this, (float)e.Time);
 
         GL.ClearColor(new Color4(0, 32, 48, 255));
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
         m_menuItemManager.PerformMenuItem();
 
-        _controller.StartDockspace();
+        m_controller.StartDockspace();
         Error.Check();
 
         WidgetManagement.Update();
-        _scene.DrawViewportWindow();
 
         Error.Check();
-        _controller.EndDockspace();
-        _controller.Render();
+        m_controller.EndDockspace();
+        m_controller.Render();
 
         ImGuiController.CheckGLError("End of frame");
 
@@ -127,20 +128,18 @@ public class ProgramWindow : GameWindow
     protected override void OnTextInput(TextInputEventArgs e)
     {
         base.OnTextInput(e);
-        _controller.PressChar((char)e.Unicode);
+        m_controller.PressChar((char)e.Unicode);
     }
 
     protected override void OnMouseWheel(MouseWheelEventArgs e)
     {
         base.OnMouseWheel(e);
-        _controller.MouseScroll(e.Offset);
+        m_controller.MouseScroll(e.Offset);
     }
 
     protected override void OnUnload()
     {
-        _scene.Dispose();
-        _controller.Dispose();
-
+        m_controller.Dispose();
         base.OnUnload();
     }
 }

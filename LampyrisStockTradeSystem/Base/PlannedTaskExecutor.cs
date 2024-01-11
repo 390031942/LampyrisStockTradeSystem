@@ -1,11 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 负责计划时间的任务进行调度，如股票行情实时更新，盘中/收盘后 数据分析
+*/
 
 namespace LampyrisStockTradeSystem;
+
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+
 
 public enum PlannedTaskExecuteMode
 {

@@ -1,13 +1,13 @@
-﻿using ImGuiNET;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 主界面子窗口管理类
+*/
 
 namespace LampyrisStockTradeSystem;
+
+using ImGuiNET;
+using System.Reflection;
 
 public class UniqueWidgetAttribute : Attribute
 {
@@ -19,26 +19,28 @@ public class UniqueWidgetAttribute : Attribute
 
 public enum WidgetModel
 {
-    Normal,
-    PopupModal,
+    Normal, // 正常模式
+    PopupModal, // 模态对话框
 }
 
 public abstract class Widget
 {
+    // 窗口名称
     public virtual string Name => this.GetType().Name;
+
+    // 窗口显示模式
     public virtual WidgetModel widgetModel => WidgetModel.Normal;
 
-
-    private bool m_shouldClose = false;
-
+    // 窗口是否处于开启的状态，设置为false以后下一帧将销毁掉窗口
     public bool isOpened = true;
 
-    public bool shouldClose => m_shouldClose;
-
-    public void MarkShouldClosed() { m_shouldClose = true; }
-
+    // UI界面逻辑
     public abstract void OnGUI();
 
+    // 窗口被创建时的逻辑
+    public virtual void OnAwake() { }
+
+    // 窗口被销毁时的逻辑
     public virtual void OnDestroy() { }
 }
 

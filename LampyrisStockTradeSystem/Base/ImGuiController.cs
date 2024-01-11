@@ -1,4 +1,13 @@
-﻿using System.Runtime.CompilerServices;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: IMGUI控制器，负责处理IMGUI渲染以及IO的逻辑
+*  Reference：https://github.com/Acruid/opentk-imgui-docking/blob/master/ImGuiNET.OpenTK.Sample/ImGuiController.cs
+*/
+
+namespace LampyrisStockTradeSystem;
+
+using System.Runtime.CompilerServices;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Desktop;
@@ -9,7 +18,45 @@ using ImGuiNET;
 using Keys = OpenTK.Windowing.GraphicsLibraryFramework.Keys;
 using ErrorCode = OpenTK.Graphics.OpenGL4.ErrorCode;
 
-namespace LampyrisStockTradeSystem;
+/// <summary>
+/// ImGUI Controller专用Shader，用于渲染IMGUI的UI界面，!!不要修改!!
+/// </summary>
+public static class ImGuiControllerShaderCode
+{
+    public static string VertexSource = @"
+        #version 330 core
+                            
+        uniform mat4 projection_matrix;
+        
+        layout(location = 0) in vec2 in_position;
+        layout(location = 1) in vec2 in_texCoord;
+        layout(location = 2) in vec4 in_color;
+        
+        out vec4 color;
+        out vec2 texCoord;
+        
+        void main()
+        {
+            gl_Position = projection_matrix * vec4(in_position, 0, 1);
+            color = in_color;
+            texCoord = in_texCoord;
+        }";
+
+    public static string FragmentSource = @" 
+        #version 330 core
+                             
+        uniform sampler2D in_fontTexture;
+        
+        in vec4 color;
+        in vec2 texCoord;
+        
+        out vec4 outputColor;
+        
+        void main()
+        {
+            outputColor = color * texture(in_fontTexture, texCoord);
+        }";
+}
 
 public class ImGuiController : IDisposable
 {
@@ -20,8 +67,6 @@ public class ImGuiController : IDisposable
     private int _vertexBufferSize;
     private int _indexBuffer;
     private int _indexBufferSize;
-
-    //private Texture _fontTexture;
 
     private int _fontTexture;
 
@@ -53,16 +98,13 @@ public class ImGuiController : IDisposable
         ImGui.SetCurrentContext(context);
         var io = ImGui.GetIO();
 
-        /* begin of 字体 */
+        /* begin of 设置全局字体 */
         ImFontAtlasPtr fontAtlas = ImGui.GetIO().Fonts;
-
         string fontPath = Path.Combine("C:\\Windows\\Fonts", "msyh.ttc");
         ImFontPtr font = fontAtlas.AddFontFromFileTTF("C:\\Windows\\Fonts\\msyh.ttc", 18, null,fontAtlas.GetGlyphRangesChineseFull());
-
-        /* end of 字体 */
+        /* end of 设置全局字体 */
 
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable; // Enable Docking
-
         io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
 
         CreateDeviceResources();
@@ -85,6 +127,9 @@ public class ImGuiController : IDisposable
         Dispose();
     }
 
+    /// <summary>
+    /// 创建OpenGL 图形设备资源
+    /// </summary>
     public void CreateDeviceResources()
     {
         _vertexBufferSize = 10000;
@@ -109,38 +154,7 @@ public class ImGuiController : IDisposable
 
         RecreateFontDeviceTexture();
 
-        string VertexSource = @"#version 330 core
-
-            uniform mat4 projection_matrix;
-
-            layout(location = 0) in vec2 in_position;
-            layout(location = 1) in vec2 in_texCoord;
-            layout(location = 2) in vec4 in_color;
-
-            out vec4 color;
-            out vec2 texCoord;
-
-            void main()
-            {
-                gl_Position = projection_matrix * vec4(in_position, 0, 1);
-                color = in_color;
-                texCoord = in_texCoord;
-            }";
-        string FragmentSource = @"#version 330 core
-
-            uniform sampler2D in_fontTexture;
-
-            in vec4 color;
-            in vec2 texCoord;
-
-            out vec4 outputColor;
-
-            void main()
-            {
-                outputColor = color * texture(in_fontTexture, texCoord);
-            }";
-
-        _shader = CreateProgram("ImGui", VertexSource, FragmentSource);
+        _shader = CreateProgram("ImGui", ImGuiControllerShaderCode.VertexSource, ImGuiControllerShaderCode.FragmentSource);
         _shaderProjectionMatrixLocation = GL.GetUniformLocation(_shader, "projection_matrix");
         _shaderFontTextureLocation = GL.GetUniformLocation(_shader, "in_fontTexture");
 

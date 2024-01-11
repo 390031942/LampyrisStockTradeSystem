@@ -1,14 +1,26 @@
-﻿using OpenQA.Selenium;
-using OpenQA.Selenium.Chrome;
-using System.Net;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 模拟浏览器进行操作的实现类，方便实现 股票网页交易自动下单，或者爬取网页上某些数据的功能
+*/
 
 namespace LampyrisStockTradeSystem;
 
-public class BrowserSystem:Singleton<BrowserSystem>
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+
+
+/// <summary>
+/// 模拟浏览器进行操作的实现类，可以拥有多个实例，每个实例的Cookie互不共享
+/// </summary>
+public class BrowserSystem
 {
     private ChromeDriver m_chromeDriver = null;
 
-    public void OnStart()
+    /// <summary>
+    /// 1
+    /// </summary>
+    public void Init()
     {
         ChromeOptions Options = new ChromeOptions();
         Options.AddArgument("--headless"); // 设置为Headless模式
@@ -23,12 +35,7 @@ public class BrowserSystem:Singleton<BrowserSystem>
         m_chromeDriver.Manage().Window.Size = new Size(1200, 1200);
     }
 
-    public void OnUpdate(float dTime)
-    {
-        
-    }
-
-    public void OnDestroy()
+    public void Close()
     {
         m_chromeDriver.Quit();
     }

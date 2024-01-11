@@ -1,9 +1,12 @@
-﻿using System;
-using System.IO;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 可序列化的单例类，比如App设置等
+*/
 
 namespace LampyrisStockTradeSystem;
+
+using System.Runtime.Serialization.Formatters.Binary;
 
 [Serializable]
 public class SerializableSingleton<T> where T : class, new()

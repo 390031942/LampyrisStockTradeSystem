@@ -1,4 +1,10 @@
-﻿namespace LampyrisStockTradeSystem;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 主界面 菜单项管理类
+*/
+
+namespace LampyrisStockTradeSystem;
 
 using ImGuiNET;
 using System;
@@ -6,7 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 
-
+// 对于任何具有MenuItem属性的类无参非泛型静态方法，都可以在主界面的菜单栏上点击以进行调用
 public class MenuItemAttribute : Attribute
 {
     public string path;

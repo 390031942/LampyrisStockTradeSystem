@@ -1,14 +1,8 @@
 ﻿/*
-** Author:      wushuhong
-** Contact:     gameta@qq.com
+** Author: wushuhong
+** Contact: gameta@qq.com
 ** Description: 单例类基类
 */
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LampyrisStockTradeSystem;
 

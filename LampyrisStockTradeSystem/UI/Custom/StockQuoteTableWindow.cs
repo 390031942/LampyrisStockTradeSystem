@@ -1,4 +1,10 @@
-﻿namespace LampyrisStockTradeSystem;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 股票实时行情表格窗口(占坑)
+*  TODO: 加入更多的行情数据类型
+*/
+namespace LampyrisStockTradeSystem;
 
 using ImGuiNET;
 using Newtonsoft.Json.Linq;

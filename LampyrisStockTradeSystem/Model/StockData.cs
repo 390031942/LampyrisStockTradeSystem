@@ -1,12 +1,12 @@
 ﻿/*
-** Author:      wushuhong
-** Contact:     gameta@qq.com
+** Author: wushuhong
+** Contact: gameta@qq.com
 ** Description: 股票数据的定义
 */
 
 namespace LampyrisStockTradeSystem;
 
-/* 股票指标数据接口 */
+/* TODO:股票指标数据接口 */
 public class IStockKLineIndicator
 {
 
@@ -93,6 +93,9 @@ public class StockKLineData
     public MAIndicator maData;
 }
 
+/// <summary>
+/// 股票数据 = 股票日K数据 + 基本面，TODO：以后会加入周线，分钟线等不同行情周期的数据
+/// </summary>
 class StockData
 {
     /// <summary>
@@ -165,6 +168,9 @@ class StockData
     public float CMC;
 }
 
+/// <summary>
+/// 实时行情，相当于当时的日K数据 + 股票代码和名称 
+/// </summary>
 public class StockRealTimeQuoteData:StockKLineData
 {
     /// <summary>
@@ -178,6 +184,7 @@ public class StockRealTimeQuoteData:StockKLineData
     public string name;
 }
 
+// 股票行情数据库，TODO：需要序列化保存 以便于实现 差异化请求数据
 class StockDatabase
 {
     /// <summary>
@@ -185,25 +192,12 @@ class StockDatabase
     /// </summary>
     private static Dictionary<string, StockData> ms_stockCode2DataDict = new Dictionary<string, StockData>();
 
-    private static void Read()
-    {
-        using (var reader = new StreamReader(@"C:\path\to\your\file.csv"))
-        {
-            while (!reader.EndOfStream)
-            {
-                var line = reader.ReadLine();
-                var values = line.Split(',');
 
-                
-            }
-        }
-    }
-
-    public static void Init()
-    {
-        
-    }
-
+    /// <summary>
+    /// 根据股票代码获取数据
+    /// </summary>
+    /// <param name="stockCode"></param>
+    /// <returns></returns>
     public static List<StockKLineData>? GetStockData(string stockCode)
     {
         if(ms_stockCode2DataDict.ContainsKey(stockCode))
@@ -213,9 +207,11 @@ class StockDatabase
         return null;
     }
 
-    [PlannedTask(mode: PlannedTaskExecuteMode.ExecuteOnlyOnTime | PlannedTaskExecuteMode.ExecuteOnlyOnTime,executeTime = "15:00")]
-    public static void Refresh()
+    /// <summary>
+    /// 每天收盘时刻后将数据保存到本地
+    /// </summary>
+    [PlannedTask(mode: PlannedTaskExecuteMode.ExecuteOnlyOnTime | PlannedTaskExecuteMode.ExecuteAfterTime,executeTime = "15:00")]
+    public static void SaveCurrentDayStockData()
     {
-        string date = DateUtil.GetCurrentDateString();
     }
 }

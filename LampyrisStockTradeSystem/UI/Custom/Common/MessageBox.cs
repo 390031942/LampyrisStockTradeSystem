@@ -1,7 +1,11 @@
-﻿namespace LampyrisStockTradeSystem;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 主界面 MessageBox的实现
+*/
+namespace LampyrisStockTradeSystem;
 
 using ImGuiNET;
-using System;
 
 public class MessageBox : Widget
 {
