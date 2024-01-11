@@ -8,10 +8,17 @@ namespace LampyrisStockTradeSystem;
 
 using System.Runtime.Serialization.Formatters.Binary;
 
-[Serializable]
-public class SerializableSingleton<T> where T : class, new()
+public class SerializableSingletonBase
 {
-    private static readonly string filePath = "singletonData.bin";
+    public void Save()
+    {
+
+    }
+}
+
+[Serializable]
+public class SerializableSingleton<T> : SerializableSingletonBase where T : class, new()
+{
     private static T ms_instance;
 
     public static T Instance
@@ -20,40 +27,13 @@ public class SerializableSingleton<T> where T : class, new()
         {
             if (ms_instance == null)
             {
-                if (File.Exists(filePath))
-                {
-                    try
-                    {
-                        using (Stream stream = File.Open(filePath, FileMode.Open))
-                        {
-                            BinaryFormatter bin = new BinaryFormatter();
-                            ms_instance = (T)bin.Deserialize(stream);
-                            SerializationManager.Instance.Register(ms_instance);
-                        }
-                    }
-                    catch
-                    {
-                        ms_instance = new T();
-                    }
-                }
-                else
+                ms_instance = SerializationManager.Instance.TryDeserializeObjectFromFile<T>();
+                if(ms_instance == null)
                 {
                     ms_instance = new T();
                 }
             }
             return ms_instance;
-        }
-    }
-
-    public static void Save()
-    {
-        if (ms_instance != null)
-        {
-            using (Stream stream = File.Open(filePath, FileMode.Create))
-            {
-                BinaryFormatter bin = new BinaryFormatter();
-                bin.Serialize(stream, ms_instance);
-            }
         }
     }
 }

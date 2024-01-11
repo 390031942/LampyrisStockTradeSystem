@@ -185,7 +185,7 @@ public class StockRealTimeQuoteData:StockKLineData
 }
 
 // 股票行情数据库，TODO：需要序列化保存 以便于实现 差异化请求数据
-class StockDatabase
+class StockDatabase:SerializableSingleton<StockDatabase>
 {
     /// <summary>
     /// 股票代码->股票数据字典
