@@ -7,6 +7,7 @@
 namespace LampyrisStockTradeSystem;
 
 using Newtonsoft.Json.Linq;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Web;
 
@@ -123,17 +124,17 @@ public static class StockDataExtractor
     {
         string url = "https://push2.eastmoney.com/api/qt/clist/get?cb=jQuery1123008330414708828249_1669967900108&fid=f62&po=1&pz=50000&pn=1&np=1&fltt=2&invt=2&ut=b2884a393a59ad64002292a3e90d46a5&fs=m%3A0%2Bt%3A6%2Bf%3A!2%2Cm%3A0%2Bt%3A13%2Bf%3A!2%2Cm%3A0%2Bt%3A80%2Bf%3A!2%2Cm%3A1%2Bt%3A2%2Bf%3A!2%2Cm%3A1%2Bt%3A23%2Bf%3A!2%2Cm%3A0%2Bt%3A7%2Bf%3A!2%2Cm%3A1%2Bt%3A3%2Bf%3A!2&fields=f4%2Cf22%2Cf12%2Cf14%2Cf2%2Cf3%2Cf62%2Cf184%2Cf66%2Cf69%2Cf72%2Cf75%2Cf78%2Cf81%2Cf84%2Cf87%2Cf204%2Cf205%2Cf124%2Cf1%2Cf13%20%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%E2%80%94%";
 
-        var httpClient = new HttpClient();
-        var response = httpClient.GetAsync(url).Result;
+        HttpRequest.Get(url, new Action<string>(
+        (string jsonString) =>
+        {
+            int jsonStringLength = jsonString.Length;
+            int validStringLength = jsonStringLength - StockDataInterface.jQueryString.Length - 3;
+            jsonString = jsonString.Substring(StockDataInterface.jQueryString.Length + 1, validStringLength);
 
-        var jsonString = response.Content.ReadAsStringAsync().Result;
-        int jsonStringLength = jsonString.Length;
-        int validStringLength = jsonStringLength - StockDataInterface.jQueryString.Length - 3;
-        jsonString = jsonString.Substring(StockDataInterface.jQueryString.Length + 1, validStringLength);
+            JObject jsonRoot = JObject.Parse(jsonString);
+            JArray stockDataArray = jsonRoot["data"]["diff"].ToObject<JArray>();
 
-        JObject jsonRoot = JObject.Parse(jsonString);
-        JArray stockDataArray = jsonRoot["data"]["diff"].ToObject<JArray>();
-
-        ((StockQuoteTableWindow)WidgetManagement.GetWidget<StockQuoteTableWindow>()).SetStockData(stockDataArray);
+            WidgetManagement.GetWidget<StockQuoteTableWindow>().SetStockData(stockDataArray);
+        }));
     }
 }

@@ -10,7 +10,7 @@ namespace LampyrisStockTradeSystem;
 
 public class SerializationManager : Singleton<SerializationManager>, ILifecycle
 {
-    private List<ILifecycle> 
+
     public void OnDestroy()
     {
 

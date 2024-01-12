@@ -18,11 +18,17 @@ public class SystemTrayIcon : Singleton<SystemTrayIcon>
             m_notifyIcon = new NotifyIcon();
             m_notifyIcon.Icon = SystemIcons.Application;
             m_notifyIcon.Visible = true;
+            m_notifyIcon.BalloonTipClicked += OnBalloonTipClicked;
         }
+    }
+
+    private void OnBalloonTipClicked(object? sender, EventArgs e)
+    {
+        throw new NotImplementedException();
     }
 
     public void ShowMessage(string message, ToolTipIcon icon = ToolTipIcon.Info)
     {
-        m_notifyIcon?.ShowBalloonTip(3000, "Lampyris股票行情交易系统", "", icon);
+        m_notifyIcon?.ShowBalloonTip(3000, "Lampyris股票行情交易系统", message, icon);
     }
 }
