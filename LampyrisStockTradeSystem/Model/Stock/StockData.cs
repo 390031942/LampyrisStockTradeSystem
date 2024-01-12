@@ -4,6 +4,8 @@
 ** Description: 股票数据的定义
 */
 
+using System.Security.Cryptography.X509Certificates;
+
 namespace LampyrisStockTradeSystem;
 
 /* TODO:股票指标数据接口 */
@@ -96,7 +98,7 @@ public class StockKLineData
 /// <summary>
 /// 股票数据 = 股票日K数据 + 基本面，TODO：以后会加入周线，分钟线等不同行情周期的数据
 /// </summary>
-class StockData
+public class StockData
 {
     /// <summary>
     /// 股票代码
@@ -182,6 +184,79 @@ public class StockRealTimeQuoteData:StockKLineData
     /// 股票名称
     /// </summary>
     public string name;
+}
+
+public enum StockType
+{
+    // 深证主板
+    SZ_MainBoard = 1,
+    // 上海主板(包含中小板)
+    SH_MainBoard = 2,
+    // 沪深主板
+    MainBoard = SZ_MainBoard | SH_MainBoard,
+    // 京市主板
+    BJ_MainBoard = 4,
+    // ST股
+    ST = 8,
+    // *ST股
+    Star_ST = 16,
+    // 创业板
+    ChiNext = 32,
+    // 科创板
+    ScienceInnovation = 64,
+    // 新股
+    New = 128,
+    // 上市交易后的第二个交易日至第五个交易日之间,无涨跌幅限制
+    C_Prefix = 256,
+}
+
+public interface IStockTypeFilter
+{
+    public bool Satisfied(StockData stockData);
+}
+
+/// <summary>
+/// 深圳主板
+/// </summary>
+public class SZMainBoardStockFilter : IStockTypeFilter
+{
+    public bool Satisfied(StockData stockData)
+    {
+        return (stockData == null && stockData.code.StartsWith("00"));
+    }
+}
+
+/// <summary>
+/// 上海主板
+/// </summary>
+public class SHMainBoardStockFilter : IStockTypeFilter
+{
+    public bool Satisfied(StockData stockData)
+    {
+        return (stockData != null && stockData.code.StartsWith("60"));
+    }
+}
+
+/// <summary>
+/// 沪深主板
+/// </summary>
+public class MainBoardStockFilter : IStockTypeFilter
+{
+    public bool Satisfied(StockData stockData)
+    {
+        return (stockData != null && (stockData.code.StartsWith("60") || stockData.code.StartsWith("00")));
+    }
+}
+
+/// <summary>
+/// 创业板
+/// </summary>
+public class ChiNextStockFilter : IStockTypeFilter
+{
+    public bool Satisfied(StockData stockData)
+    {
+        return (stockData != null && (stockData.code.StartsWith("30"));
+    }
 }
 
 // 股票行情数据库，TODO：需要序列化保存 以便于实现 差异化请求数据
