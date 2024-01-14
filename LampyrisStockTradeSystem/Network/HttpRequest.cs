@@ -1,8 +1,10 @@
-﻿using LampyrisStockTradeSystem;
-using LampyrisStockTradeSystemInternal;
-using System;
-using System.Net.Http;
-using System.Threading.Tasks;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 异步HTTP请求实现
+*/
+
+using LampyrisStockTradeSystem;
 
 namespace LampyrisStockTradeSystemInternal
 {
@@ -22,12 +24,23 @@ namespace LampyrisStockTradeSystemInternal
                 HttpResponseMessage response = await _client.GetAsync(url);
                 if (response.IsSuccessStatusCode)
                 {
-                    string result = await response.Content.ReadAsStringAsync();
-                    callback(result);
+                    string rawJsonString = await response.Content.ReadAsStringAsync();
+                    callback(rawJsonString);
                 }
 
                 HttpRequest.Recycle(this);
             });
+        }
+
+        public void GetSync(string url, Action<string> callback)
+        { 
+            HttpResponseMessage response = _client.GetAsync(url).Result;
+            if (response.IsSuccessStatusCode)
+            {
+                string rawJsonString = response.Content.ReadAsStringAsync().Result;
+                callback(rawJsonString);
+            }
+            HttpRequest.Recycle(this);
         }
     }
 }
@@ -40,6 +53,8 @@ namespace LampyrisStockTradeSystem
     {
         private static Stack<HttpRequestInternal> ms_httpRequestInternals = new Stack<HttpRequestInternal>();
 
+        private static HttpRequestInternal m_httpRequestSync = new HttpRequestInternal();
+
         public static void Get(string url, Action<string> callback)
         {
             if(ms_httpRequestInternals.TryPop(out HttpRequestInternal httpRequest))
@@ -51,6 +66,11 @@ namespace LampyrisStockTradeSystem
                 httpRequest = new HttpRequestInternal();
                 httpRequest.Get(url, callback);
             }
+        }
+
+        public static void GetSync(string url, Action<string> callback)
+        {
+            m_httpRequestSync.GetSync(url, callback);
         }
 
         public static void Recycle(HttpRequestInternal httpRequest)

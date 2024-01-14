@@ -4,20 +4,17 @@
 ** Description: 可序列化的单例类，比如App设置等
 */
 
+using System.Reflection;
+
 namespace LampyrisStockTradeSystem;
 
-using System.Runtime.Serialization.Formatters.Binary;
-
-public class SerializableSingletonBase
+public interface IPostSerializationHandler
 {
-    public void Save()
-    {
-
-    }
+    public void PostSerialization();
 }
 
 [Serializable]
-public class SerializableSingleton<T> : SerializableSingletonBase where T : class, new()
+public class SerializableSingleton<T> where T : class, new()
 {
     private static T ms_instance;
 
@@ -27,13 +24,29 @@ public class SerializableSingleton<T> : SerializableSingletonBase where T : clas
         {
             if (ms_instance == null)
             {
-                ms_instance = SerializationManager.Instance.TryDeserializeObjectFromFile<T>();
+                ms_instance = LifecycleManager.Instance.Get<SerializationManager>().TryDeserializeObjectFromFile<T>();
                 if(ms_instance == null)
                 {
                     ms_instance = new T();
                 }
+                else
+                {
+                    // 检查类型T是否实现了IABC接口
+                    if (typeof(IPostSerializationHandler).IsAssignableFrom(typeof(T)))
+                    {
+                        MethodInfo method = typeof(T).GetMethod("PostSerialization");
+                        if (method != null)
+                        {
+                            method.Invoke(ms_instance, null); // 通过反射调用func方法
+                        }
+                    }
+                }
+
+                LifecycleManager.Instance.Get<SerializationManager>().Register(ms_instance);
             }
             return ms_instance;
         }
     }
+
+    public virtual void PostSerialization() { }
 }

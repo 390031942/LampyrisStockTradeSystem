@@ -4,6 +4,7 @@
 ** Description: 股票数据的定义
 */
 
+using Newtonsoft.Json.Linq;
 using System.Security.Cryptography.X509Certificates;
 
 namespace LampyrisStockTradeSystem;
@@ -15,6 +16,7 @@ public class IStockKLineIndicator
 }
 
 /* 股票MA指标 */
+[Serializable]
 public struct MAIndicator
 {
     public float MA5;
@@ -27,6 +29,7 @@ public struct MAIndicator
 }
 
 /* 股票K线数据，这里不一定指的是日K，只是泛指一根K线的数据 */
+[Serializable]
 public class StockKLineData
 {
     /// <summary>
@@ -95,9 +98,11 @@ public class StockKLineData
     public MAIndicator maData;
 }
 
+
 /// <summary>
 /// 股票数据 = 股票日K数据 + 基本面，TODO：以后会加入周线，分钟线等不同行情周期的数据
 /// </summary>
+[Serializable]
 public class StockData
 {
     /// <summary>
@@ -186,100 +191,86 @@ public class StockRealTimeQuoteData:StockKLineData
     public string name;
 }
 
-public enum StockType
-{
-    // 深证主板
-    SZ_MainBoard = 1,
-    // 上海主板(包含中小板)
-    SH_MainBoard = 2,
-    // 沪深主板
-    MainBoard = SZ_MainBoard | SH_MainBoard,
-    // 京市主板
-    BJ_MainBoard = 4,
-    // ST股
-    ST = 8,
-    // *ST股
-    Star_ST = 16,
-    // 创业板
-    ChiNext = 32,
-    // 科创板
-    ScienceInnovation = 64,
-    // 新股
-    New = 128,
-    // 上市交易后的第二个交易日至第五个交易日之间,无涨跌幅限制
-    C_Prefix = 256,
-}
-
-public interface IStockTypeFilter
-{
-    public bool Satisfied(StockData stockData);
-}
-
-/// <summary>
-/// 深圳主板
-/// </summary>
-public class SZMainBoardStockFilter : IStockTypeFilter
-{
-    public bool Satisfied(StockData stockData)
-    {
-        return (stockData == null && stockData.code.StartsWith("00"));
-    }
-}
-
-/// <summary>
-/// 上海主板
-/// </summary>
-public class SHMainBoardStockFilter : IStockTypeFilter
-{
-    public bool Satisfied(StockData stockData)
-    {
-        return (stockData != null && stockData.code.StartsWith("60"));
-    }
-}
-
-/// <summary>
-/// 沪深主板
-/// </summary>
-public class MainBoardStockFilter : IStockTypeFilter
-{
-    public bool Satisfied(StockData stockData)
-    {
-        return (stockData != null && (stockData.code.StartsWith("60") || stockData.code.StartsWith("00")));
-    }
-}
-
-/// <summary>
-/// 创业板
-/// </summary>
-public class ChiNextStockFilter : IStockTypeFilter
-{
-    public bool Satisfied(StockData stockData)
-    {
-        return (stockData != null && (stockData.code.StartsWith("30"));
-    }
-}
-
 // 股票行情数据库，TODO：需要序列化保存 以便于实现 差异化请求数据
-class StockDatabase:SerializableSingleton<StockDatabase>
+[Serializable]
+class StockDatabase:SerializableSingleton<StockDatabase>,IPostSerializationHandler
 {
     /// <summary>
     /// 股票代码->股票数据字典
     /// </summary>
-    private static Dictionary<string, StockData> ms_stockCode2DataDict = new Dictionary<string, StockData>();
+    private Dictionary<string, StockData> m_stockCode2DataDict = new Dictionary<string, StockData>();
 
+    private List<KeyValuePair<string, StockData>> m_stockCode2DataList = new List<KeyValuePair<string, StockData>>();
 
     /// <summary>
     /// 根据股票代码获取数据
     /// </summary>
     /// <param name="stockCode"></param>
     /// <returns></returns>
-    public static List<StockKLineData>? GetStockData(string stockCode)
+    public List<StockKLineData>? GetStockData(string stockCode)
     {
-        if(ms_stockCode2DataDict.ContainsKey(stockCode))
+        if(m_stockCode2DataDict.ContainsKey(stockCode))
         {
-            return ms_stockCode2DataDict[stockCode].perDayKLineList;
+            return m_stockCode2DataDict[stockCode].perDayKLineList;
         }
         return null;
+    }
+
+    /// <summary>
+    /// 获取所有股票的列表
+    /// </summary>
+
+    [PlannedTask(mode: PlannedTaskExecuteMode.ExecuteOnlyOnTime | PlannedTaskExecuteMode.ExecuteAfterTime | PlannedTaskExecuteMode.ExecuteOnLaunch, executeTime = "9:14")]
+    public static void GetAllStockList()
+    {
+        HttpRequest.Get(StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.CurrentQuotes), (string json) => {
+            string strippedJson = JsonStripperUtil.GetEastMoneyStrippedJson(json);
+            try
+            {
+                JObject jsonRoot = JObject.Parse(strippedJson);
+
+                JArray stockDataArray = jsonRoot?["data"]?["diff"]?.ToObject<JArray>();
+                if (stockDataArray != null)
+                {
+                    for (int i = 0; i < stockDataArray.Count; i++)
+                    {
+                        JObject stockObject = stockDataArray[i].ToObject<JObject>();
+
+                        if (stockObject != null)
+                        {
+                            // 这里获取股票代码和名称，行业板块信息
+                            string name = stockObject["f14"]?.ToString();
+                            string code = stockObject["f12"]?.ToString();
+                            string sectorCode = stockObject["f127"]?.ToString();
+
+                            if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(code))
+                            {
+                                StockData stockData = null;
+                                if (!StockDatabase.Instance.m_stockCode2DataDict.ContainsKey(code))
+                                {
+                                    stockData = StockDatabase.Instance.m_stockCode2DataDict[code] = new StockData()
+                                    {
+                                        code = code,
+                                        name = name,
+                                        sectorCode = sectorCode ?? "",
+                                    };
+                                }
+                                else
+                                {
+                                    stockData = StockDatabase.Instance.m_stockCode2DataDict[code];
+                                }
+                                LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.UpdateHistoryQuotes, stockData);
+                            }
+                        }
+                    }
+                }
+                // StockDatabase.Instance.UpdateHistoryQuotes();
+            }
+            catch (Exception ex)
+            {
+                WidgetManagement.GetWidget<MessageBox>().SetContent("StockQuoteInterfaceType.CurrentQuotes报错", ex.ToString());
+            }
+        });
     }
 
     /// <summary>
@@ -288,5 +279,106 @@ class StockDatabase:SerializableSingleton<StockDatabase>
     [PlannedTask(mode: PlannedTaskExecuteMode.ExecuteOnlyOnTime | PlannedTaskExecuteMode.ExecuteAfterTime,executeTime = "15:00")]
     public static void SaveCurrentDayStockData()
     {
+
+    }
+
+    /*
+        EASTMONEY_QUOTE_FIELDS = {
+        'f12': '代码',
+        'f14': '名称',
+        'f3': '涨跌幅',
+        'f2': '最新价',
+        'f15': '最高',
+        'f16': '最低',
+        'f17': '今开',
+        'f4': '涨跌额',
+        'f8': '换手率',
+        'f10': '量比',
+        'f9': '动态市盈率',
+        'f5': '成交量',
+        'f6': '成交额',
+        'f18': '昨日收盘',
+        'f20': '总市值',
+        'f21': '流通市值',
+        'f13': '市场编号',
+        'f124': '更新时间戳',
+        'f297': '最新交易日',
+    } 
+    */
+    private void UpdateHistoryQuotes()
+    {
+
+    }
+
+    private static void UpdateHistoryQuotes(StockData stockData)
+    {
+        string url = StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.KLineData, UrlUtil.GetStockCodeParam("600000"), "20240112", "20240112");
+        HttpRequest.GetSync(url, (string json) =>
+        {
+            string strippedJson = JsonStripperUtil.GetEastMoneyStrippedJson(json);
+            try
+            {
+                JObject jsonRoot = JObject.Parse(strippedJson);
+                JArray klinesArray = jsonRoot?["data"]?["klines"]?.ToObject<JArray>();
+                if (klinesArray != null)
+                {
+                    for (int i = 0; i < klinesArray.Count; i++)
+                    {
+                        JToken klineToken = klinesArray[i];
+                        string klineJson = klineToken.ToString();
+
+                        // 2024-01-12,8.29,8.66,8.66,8.16,2718659,2311985347.48,6.35,10.04,0.79,21.33
+                        // date,openPrice,price,highestPrice,lowestPrice,volumn，
+                        string[] strings = klineJson.Split(',');
+                        if (strings.Length > 0)
+                        {
+                            DateTime date = Convert.ToDateTime(strings[0]);
+                            float openPrice = Convert.ToSingle(strings[1]);
+                            float price = Convert.ToSingle(strings[2]);
+                            float highestPrice = Convert.ToSingle(strings[3]);
+                            float lowestPrice = Convert.ToSingle(strings[4]);
+                            float volume = Convert.ToSingle(strings[5]);
+                            float money = Convert.ToSingle(strings[6]);
+                            float amplitude = Convert.ToSingle(strings[7]);
+                            float percentage = Convert.ToSingle(strings[8]);
+                            float priceChange = Convert.ToSingle(strings[9]);
+                            float turnOverRate = Convert.ToSingle(strings[10]);
+
+                            stockData.perDayKLineList.Add(new StockKLineData()
+                            {
+                                openPrice = openPrice,
+                                closePrice = price,
+                                highestPrice = highestPrice,
+                                lowestPrice = lowestPrice,
+                                volume = volume,
+                                money = money,
+                                amplitude = amplitude,
+                                percentage = percentage,
+                                priceChange = priceChange,
+                                turnOverRate = turnOverRate
+                            });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                WidgetManagement.GetWidget<MessageBox>().SetContent("StockQuoteInterfaceType.CurrentQuotes报错", ex.ToString());
+            }
+        }
+        );
+    }
+
+    public override void PostSerialization() 
+    {
+        foreach (KeyValuePair<string, StockData> kvp in m_stockCode2DataList)
+        {
+            m_stockCode2DataDict[kvp.Key] = kvp.Value;
+        }
+        LifecycleManager.Instance.Get<EventManager>().AddEventHandler(EventType.UpdateHistoryQuotes, new Action<object[]>((object[] param) => 
+        {
+            StockData stockData = (StockData)param[0];
+            UpdateHistoryQuotes(stockData);
+        })); 
     }
 }

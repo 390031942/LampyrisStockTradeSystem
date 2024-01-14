@@ -108,25 +108,32 @@ public static class WidgetManagement
 
             foreach (var widget in pair.Value)
             {
-                bool value;
-                if(widget.widgetModel == WidgetModel.Normal)
-                    value = ImGui.Begin(widget.Name, ref widget.isOpened);
-                else
-                    value = ImGui.BeginPopupModal(pair.Key.Name, ref widget.isOpened);
-
-                if (value)
-                    widget.OnGUI();
-
-                if (widget.widgetModel == WidgetModel.Normal)
-                    ImGui.End();
-                else
-                    ImGui.EndPopup();
-
-                if (!widget.isOpened)
+                try
                 {
-                    widget.OnDestroy();
-                    m_tempWidgetList.Add(widget);
-                    continue;
+                    bool value;
+                    if (widget.widgetModel == WidgetModel.Normal)
+                        value = ImGui.Begin(widget.Name, ref widget.isOpened);
+                    else
+                        value = ImGui.BeginPopupModal(pair.Key.Name, ref widget.isOpened);
+
+                    if (value)
+                        widget.OnGUI();
+
+                    if (widget.widgetModel == WidgetModel.Normal)
+                        ImGui.End();
+                    else
+                        ImGui.EndPopup();
+
+                    if (!widget.isOpened)
+                    {
+                        widget.OnDestroy();
+                        m_tempWidgetList.Add(widget);
+                        continue;
+                    }
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
                 }
             }
 

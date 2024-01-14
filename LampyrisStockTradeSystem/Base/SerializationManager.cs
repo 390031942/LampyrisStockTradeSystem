@@ -4,16 +4,26 @@
 ** Description: 序列化工具类，负责将App设置，股票分析数据等保存到本地磁盘
 */
 
+using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 
 namespace LampyrisStockTradeSystem;
 
-public class SerializationManager : Singleton<SerializationManager>, ILifecycle
+public class SerializationManager: ILifecycle
 {
+    private List<object> m_serializableObjectList = new List<object>();
 
     public void OnDestroy()
     {
-
+        BinaryFormatter bin = new BinaryFormatter();
+        foreach (object serializableObject in m_serializableObjectList)
+        {
+            string filePath = Path.Combine(PathUtil.SerializedDataSavePath, serializableObject.GetType().Name + ".bin");
+            using (Stream stream = File.Open(filePath, FileMode.OpenOrCreate))
+            {
+                bin.Serialize(stream, serializableObject);
+            }
+        }
     }
 
     public void OnStart()
@@ -27,16 +37,11 @@ public class SerializationManager : Singleton<SerializationManager>, ILifecycle
 
     }
 
-    public void Register(object serializedObject)
+    public void Register(object serializableObject)
     {
-        if (serializedObject != null)
+        if (serializableObject != null)
         {
-            string filePath = Path.Combine(PathUtil.SerializedDataSavePath, serializedObject.GetType().Name + ".bin");
-            using (Stream stream = File.Open(filePath, FileMode.Create))
-            {
-                BinaryFormatter bin = new BinaryFormatter();
-                bin.Serialize(stream, serializedObject);
-            }
+            m_serializableObjectList.Add(serializableObject);
         }
     }
 
@@ -44,10 +49,20 @@ public class SerializationManager : Singleton<SerializationManager>, ILifecycle
     {
         string filePath = Path.Combine(PathUtil.SerializedDataSavePath, typeof(T).Name + ".bin");
 
-        using (Stream stream = File.Open(filePath, FileMode.Open))
+        if(File.Exists(filePath))
         {
-            BinaryFormatter bin = new BinaryFormatter();
-            return (T)bin.Deserialize(stream);
+            using (Stream stream = File.Open(filePath, FileMode.Open))
+            {
+                try
+                {
+                    BinaryFormatter bin = new BinaryFormatter();
+                    return (T)bin.Deserialize(stream);
+                }
+                catch(SerializationException ex)
+                {
+                    return default(T);
+                }
+            }
         }
 
         return default(T);

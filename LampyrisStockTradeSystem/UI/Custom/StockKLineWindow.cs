@@ -92,7 +92,7 @@ public class StockKLineWindow
 
     public void OnUpdate()
     {
-        var kLineDataList = StockDatabase.GetStockData("000001");
+        var kLineDataList = StockDatabase.Instance.GetStockData("000001");
 
         // 绘制K线图
         ImGui.Begin("K线行情");

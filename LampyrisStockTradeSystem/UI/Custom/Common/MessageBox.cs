@@ -9,11 +9,11 @@ using ImGuiNET;
 
 public class MessageBox : Widget
 {
-    private string m_title;
+    private string m_title = "MessageBox Default Title";
 
-    private string m_message;
+    private string m_message = "MessageBox Default Message";
 
-    public override string Name => m_title;
+    public override string Name => !string.IsNullOrEmpty(m_title) ? m_title:"MessageBox Default Title";
 
     public override WidgetModel widgetModel => WidgetModel.Normal;
 

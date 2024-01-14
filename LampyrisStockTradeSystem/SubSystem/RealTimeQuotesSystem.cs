@@ -12,7 +12,6 @@ public class RealTimeQuotesSystem
     public static void Update()
     {
         WidgetManagement.GetWidget<StockQuoteTableWindow>();
-        StockDataExtractor.RequestRealTimeQuotes();
     }
 
     // 获取股票 突破日新高次数 的数据(选股策略)
