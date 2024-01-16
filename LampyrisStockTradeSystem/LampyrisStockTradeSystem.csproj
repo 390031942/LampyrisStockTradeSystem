@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="UI\Custom\StockQuoteTableWindow.cs~RF15112bea.TMP" />
+    <None Remove="Sources\UI\Custom\StockQuoteTableWindow.cs~RF15112bea.TMP" />
   </ItemGroup>
 
   <ItemGroup>
