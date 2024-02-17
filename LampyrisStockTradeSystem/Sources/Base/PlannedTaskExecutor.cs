@@ -102,7 +102,7 @@ public class PlannedTaskExecutor : ILifecycle
     {
         Assembly asm = Assembly.GetExecutingAssembly();
 
-        // 获取所有具有MenuItem属性的无参非泛型的静态方法
+        // 获取所有具有PlannedTask的属性的无参非泛型的静态方法
         var types = asm.GetTypes();
 
         DateTime nowDate = DateTime.Now;

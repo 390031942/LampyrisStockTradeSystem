@@ -10,9 +10,9 @@ namespace LampyrisStockTradeSystem;
 
 public enum StockQuoteInterfaceType
 {
-    KLineData = 1, // 个股-K线数据
+    KLineData = 1, // 个股-K 线数据
     IntradayTradingDetail = 2, // 个股-分时成交明细
-    CurrentQuotes = 3, // 全体-实时行情列表
+    CurrentQuotes = 3, // 全体-沪深京实时行情列表
 }
 
 public abstract class IStockQuoteInterface

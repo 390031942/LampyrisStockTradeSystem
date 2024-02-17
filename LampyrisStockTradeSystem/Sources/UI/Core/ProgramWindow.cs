@@ -36,9 +36,13 @@ public class ProgramWindow : GameWindow
 {
     private ImGuiController m_controller;
 
+    public Action BeforeRenderFrame;
+
+    public Action AfterRenderFrame;
+
     private static NativeWindowSettings ms_nativeWindowSetting => new NativeWindowSettings()
     { 
-        Size = new Vector2i(1600, 900), 
+        Size = new Vector2i(1280, 720), 
         APIVersion = new Version(3, 3) 
     };
 
@@ -48,6 +52,11 @@ public class ProgramWindow : GameWindow
     }
 
     private static DebugProc m_debugProcCallback = ProgramWindowDebugger.DebugCallback;
+
+    internal void AddInputChar(char c)
+    {
+        m_controller.PressChar(c);
+    }
 
     private static GCHandle m_debugProcCallbackHandle;
 
@@ -98,6 +107,7 @@ public class ProgramWindow : GameWindow
 
     protected override void OnRenderFrame(FrameEventArgs e)
     {
+        BeforeRenderFrame?.Invoke();
         base.OnRenderFrame(e);
 
         LifecycleManager.Instance.Tick();
@@ -109,11 +119,16 @@ public class ProgramWindow : GameWindow
         GL.ClearColor(new Color4(0, 32, 48, 255));
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
+        // 渲染菜单栏
         m_menuItemManager.PerformMenuItem();
 
         m_controller.StartDockspace();
         Error.Check();
 
+        // 处理键盘输入
+        KeyBoardController.Update();
+
+        // 渲染子窗口
         WidgetManagement.Update();
 
         Error.Check();
@@ -123,12 +138,15 @@ public class ProgramWindow : GameWindow
         ImGuiController.CheckGLError("End of frame");
 
         SwapBuffers();
+
+        AfterRenderFrame?.Invoke();
     }
 
     protected override void OnTextInput(TextInputEventArgs e)
     {
         base.OnTextInput(e);
         m_controller.PressChar((char)e.Unicode);
+        KeyBoardController.HandleTextInput(e.AsString);
     }
 
     protected override void OnMouseWheel(MouseWheelEventArgs e)

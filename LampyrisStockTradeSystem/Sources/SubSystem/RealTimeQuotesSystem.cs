@@ -7,11 +7,18 @@ namespace LampyrisStockTradeSystem;
 
 public class RealTimeQuotesSystem
 {
-    [PlannedTask(mode:PlannedTaskExecuteMode.ExecuteDuringTime, "09:15-15:00",3000)]
+    // [PlannedTask(mode:PlannedTaskExecuteMode.ExecuteDuringTime, "09:15-15:00",3000)]
     [MenuItem("行情/实时行情刷新")]
     public static void Update()
     {
-        WidgetManagement.GetWidget<StockQuoteTableWindow>();
+        WidgetManagement.GetWidget<RealTimeQuoteWindow>();
+    }
+
+    [MenuItem("行情/测试K线图")]
+    public static void TestKLine()
+    {
+        KLineWindow window = WidgetManagement.GetWidget<KLineWindow>();
+       window.ShowQuoteByCode("600000");
     }
 
     // 获取股票 突破日新高次数 的数据(选股策略)

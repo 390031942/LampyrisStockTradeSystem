@@ -17,7 +17,7 @@ namespace LampyrisStockTradeSystemInternal
             _client = new HttpClient();
         }
 
-        public void Get(string url, Action<string> callback)
+        public void Get(string url, Action<string> callback = null)
         {
             Task.Run(async () =>
             {
@@ -25,7 +25,10 @@ namespace LampyrisStockTradeSystemInternal
                 if (response.IsSuccessStatusCode)
                 {
                     string rawJsonString = await response.Content.ReadAsStringAsync();
-                    callback(rawJsonString);
+                    if (callback != null)
+                    {
+                        callback(rawJsonString);
+                    }
                 }
 
                 HttpRequest.Recycle(this);
@@ -38,7 +41,10 @@ namespace LampyrisStockTradeSystemInternal
             if (response.IsSuccessStatusCode)
             {
                 string rawJsonString = response.Content.ReadAsStringAsync().Result;
-                callback(rawJsonString);
+                if(callback != null)
+                {
+                    callback(rawJsonString);
+                }
             }
             HttpRequest.Recycle(this);
         }
@@ -68,7 +74,7 @@ namespace LampyrisStockTradeSystem
             }
         }
 
-        public static void GetSync(string url, Action<string> callback)
+        public static void GetSync(string url, Action<string> callback = null)
         {
             m_httpRequestSync.GetSync(url, callback);
         }

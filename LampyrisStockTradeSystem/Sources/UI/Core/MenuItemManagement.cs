@@ -64,20 +64,18 @@ public class MenuItemManagement
 
         foreach (string str in strs)
         {
-            if (m_name2nodeDict.ContainsKey(str))
+            fullPath += ("/" + str);
+            if (m_name2nodeDict.ContainsKey(fullPath))
             {
-                currentNode = m_name2nodeDict[str];
+                currentNode = m_name2nodeDict[fullPath];
             } 
             else
             {
-                fullPath += ("/" + str);
-
                 MenuItemNode newNode = new MenuItemNode(str);
                 m_name2nodeDict[fullPath] = newNode;
                 currentNode.children.Add(newNode);
                 newNode.parent = currentNode;
                 currentNode = newNode;
-
             }
         }
 
@@ -122,8 +120,8 @@ public class MenuItemManagement
                 {
                     TraverseNode(child);
                 }
+                ImGui.EndMenu();
             }
-            ImGui.EndMenu();
         }
         else
         {
@@ -136,11 +134,14 @@ public class MenuItemManagement
 
     public void PerformMenuItem()
     {
-        ImGui.BeginMainMenuBar();
-
-        foreach (var children in m_dummyRoot.children)
+        if (ImGui.BeginMainMenuBar())
         {
-            TraverseNode(children);
+            foreach(var node in m_dummyRoot.children)
+            {
+                TraverseNode(node);
+            }
+            ImGui.EndMainMenuBar();
         }
+
     }
 }

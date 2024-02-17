@@ -5,19 +5,22 @@
 */
 namespace LampyrisStockTradeSystem;
 
+using System;
+using System.Collections.Generic;
+
 class Program
 {
     static void Main()
     {
-        // 初始化生命周期管理
         LifecycleManager.Instance.StartUp();
 
         // 初始化系统托盘程序
         SystemTrayIcon.Instance.Create();
 
-        ProgramWindow wnd = new ProgramWindow();
-        wnd.Run();
+        RuntimeContext.mainWindow = new ProgramWindow();
+        RuntimeContext.mainWindow.Run();
 
         LifecycleManager.Instance.ShutDown();
+
     }
 }

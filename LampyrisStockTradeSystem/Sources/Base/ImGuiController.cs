@@ -120,6 +120,8 @@ public class ImGuiController : IDisposable
     {
         _windowWidth = width;
         _windowHeight = height;
+
+        WidgetManagement.HandleWindowResize(width, height);
     }
 
     public void DestroyDeviceObjects()
@@ -257,7 +259,7 @@ public class ImGuiController : IDisposable
         io.DeltaTime = deltaSeconds; // DeltaTime is in seconds.
     }
 
-    readonly List<char> PressedChars = new List<char>();
+    public List<char> PressedChars = new List<char>();
 
     private void UpdateImGuiInput(GameWindow wnd)
     {
@@ -311,25 +313,24 @@ public class ImGuiController : IDisposable
     private static void SetKeyMappings()
     {
         ImGuiIOPtr io = ImGui.GetIO();
-        io.KeyMap[(int)ImGuiKey.Tab] = (int)Keys.Tab;
+        /* 构造ImGuiKey -> OpenTK.Keys的映射 */
+        foreach (Keys keys in Enum.GetValues(typeof(Keys)))
+        {
+            if(Enum.TryParse(typeof(ImGuiKey), keys.ToString(),out var imguiKey))
+            {
+                if(imguiKey != null)
+                {
+                    io.KeyMap[(int)imguiKey] = (int)keys;
+                }
+            }
+        }
+
+        // 特殊处理的还有四个方向箭头
         io.KeyMap[(int)ImGuiKey.LeftArrow] = (int)Keys.Left;
         io.KeyMap[(int)ImGuiKey.RightArrow] = (int)Keys.Right;
         io.KeyMap[(int)ImGuiKey.UpArrow] = (int)Keys.Up;
         io.KeyMap[(int)ImGuiKey.DownArrow] = (int)Keys.Down;
-        io.KeyMap[(int)ImGuiKey.PageUp] = (int)Keys.PageUp;
-        io.KeyMap[(int)ImGuiKey.PageDown] = (int)Keys.PageDown;
-        io.KeyMap[(int)ImGuiKey.Home] = (int)Keys.Home;
-        io.KeyMap[(int)ImGuiKey.End] = (int)Keys.End;
-        io.KeyMap[(int)ImGuiKey.Delete] = (int)Keys.Delete;
-        io.KeyMap[(int)ImGuiKey.Backspace] = (int)Keys.Backspace;
-        io.KeyMap[(int)ImGuiKey.Enter] = (int)Keys.Enter;
-        io.KeyMap[(int)ImGuiKey.Escape] = (int)Keys.Escape;
-        io.KeyMap[(int)ImGuiKey.A] = (int)Keys.A;
-        io.KeyMap[(int)ImGuiKey.C] = (int)Keys.C;
-        io.KeyMap[(int)ImGuiKey.V] = (int)Keys.V;
-        io.KeyMap[(int)ImGuiKey.X] = (int)Keys.X;
-        io.KeyMap[(int)ImGuiKey.Y] = (int)Keys.Y;
-        io.KeyMap[(int)ImGuiKey.Z] = (int)Keys.Z;
+
     }
 
     private void RenderImDrawData(ImDrawDataPtr draw_data)

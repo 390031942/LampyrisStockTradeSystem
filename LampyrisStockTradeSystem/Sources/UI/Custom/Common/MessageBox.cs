@@ -15,7 +15,7 @@ public class MessageBox : Widget
 
     public override string Name => !string.IsNullOrEmpty(m_title) ? m_title:"MessageBox Default Title";
 
-    public override WidgetModel widgetModel => WidgetModel.Normal;
+    public override WidgetModel widgetModel => WidgetModel.PopupModal;
 
     public override void OnGUI()
     {

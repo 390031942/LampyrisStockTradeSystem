@@ -7,8 +7,9 @@ namespace LampyrisStockTradeSystem;
 
 public static class RuntimeContext
 {
-    /// <summary>
-    /// 正在浏览的股票代码
-    /// </summary>
+    // 正在浏览的股票代码
     public static string browsingStockCode = "";
+
+    // 主窗口类对象
+    public static ProgramWindow mainWindow;
 }
