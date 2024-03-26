@@ -5,6 +5,7 @@
 */
 
 using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 
 namespace LampyrisStockTradeSystem;
 
@@ -658,5 +659,17 @@ public class QuoteDatabase : SerializableSingleton<QuoteDatabase>, IPostSerializ
     public QuoteData QueryQuoteData(string code)
     {
         return m_stockCode2DataDict[code];
+    }
+
+    public List<QuoteData> GetStockDataListConditional(Func<bool,QuoteData> filterFunc)
+    {
+        List<QuoteData> result = new List<QuoteData>();
+        foreach (var kvp in m_stockCode2DataList)
+        {
+            StockQuoteData stockQuoteData = kvp.Value;
+            result.Add(stockQuoteData);
+        }
+
+        return result;
     }
 }

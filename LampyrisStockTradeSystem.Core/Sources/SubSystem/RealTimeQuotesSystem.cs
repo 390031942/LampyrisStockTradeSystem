@@ -18,7 +18,7 @@ public class RealTimeQuotesSystem
     public static void TestKLine()
     {
         KLineWindow window = WidgetManagement.GetWidget<KLineWindow>();
-       window.ShowQuoteByCode("600000");
+        window.ShowQuoteByCode("600000");
     }
 
     // 获取股票 突破日新高次数 的数据(选股策略)

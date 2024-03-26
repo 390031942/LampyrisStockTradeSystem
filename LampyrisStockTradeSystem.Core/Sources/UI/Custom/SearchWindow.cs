@@ -1,4 +1,4 @@
-﻿/*
+﻿    /*
 ** Author: wushuhong
 ** Contact: gameta@qq.com
 ** Description: 主界面右下角的股票搜索窗口

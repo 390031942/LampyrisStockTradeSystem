@@ -15,7 +15,7 @@ using PixelFormat = OpenTK.Graphics.OpenGL4.PixelFormat;
 
 public static class Resources
 {
-    private static Dictionary<string,int>  ms_resPath2resIdDict = new Dictionary<string,int>();
+    private static Dictionary<string, int> ms_resPath2resIdDict = new Dictionary<string, int>();
     private static Dictionary<int, string> ms_resId2resPathDict = new Dictionary<int, string>();
 
     /// <summary>
@@ -28,32 +28,13 @@ public static class Resources
         int textureID;
 
         // 存在则直接返回
-        if(ms_resPath2resIdDict.TryGetValue(path, out textureID))
+        if (ms_resPath2resIdDict.TryGetValue(path, out textureID))
         {
             return textureID;
         }
 
-        try
-        {
-            Bitmap bitmap = new Bitmap(path);
-            BitmapData data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-
-            // GL.Hint(HintTarget.PerspectiveCorrectionHint, HintMode.Nicest);
-
-            GL.GenTextures(1, out textureID);
-            GL.BindTexture(TextureTarget.Texture2D, textureID);
-
-            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, data.Width, data.Height, 0, PixelFormat.Bgra, PixelType.UnsignedByte, data.Scan0);
-            bitmap.UnlockBits(data);
-
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
-        }
-        catch (Exception ex)
-        {
-            Console.Write(ex.ToString());
-            return -1;
-        }
+        Bitmap bitmap = new Bitmap(path);
+        textureID = LoadTextureFromBitmap(bitmap);
 
         ms_resPath2resIdDict[path] = textureID;
         ms_resId2resPathDict[textureID] = path;
@@ -67,7 +48,7 @@ public static class Resources
     /// <param name="path">OpenGL纹理ID<</param>
     public static void FreeTexture(int textureID)
     {
-        if(ms_resId2resPathDict.ContainsKey(textureID))
+        if (ms_resId2resPathDict.ContainsKey(textureID))
         {
             GL.DeleteTextures(1, ref textureID);
 
@@ -77,10 +58,10 @@ public static class Resources
         }
     }
 
-   /// <summary>
-   /// 动态加载字体
-   /// </summary>
-   /// <returns></returns>
+    /// <summary>
+    /// 动态加载字体
+    /// </summary>
+    /// <returns></returns>
     public unsafe static ImFontPtr LoadFont()
     {
         // 创建一个字体集
@@ -102,5 +83,33 @@ public static class Resources
         fontAtlas.Build();
 
         return font;
+    }
+
+    public static int LoadTextureFromBitmap(Bitmap bitmap)
+    {
+        int textureID;
+
+        try
+        {
+            BitmapData data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            // GL.Hint(HintTarget.PerspectiveCorrectionHint, HintMode.Nicest);
+
+            GL.GenTextures(1, out textureID);
+            GL.BindTexture(TextureTarget.Texture2D, textureID);
+
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, data.Width, data.Height, 0, PixelFormat.Bgra, PixelType.UnsignedByte, data.Scan0);
+            bitmap.UnlockBits(data);
+
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+        }
+        catch (Exception ex)
+        {
+            Console.Write(ex.ToString());
+            return -1;
+        }
+
+        return textureID;
     }
 }
