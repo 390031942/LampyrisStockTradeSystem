@@ -48,10 +48,10 @@ public static class Resources
     /// <param name="path">OpenGL纹理ID<</param>
     public static void FreeTexture(int textureID)
     {
+        GL.DeleteTextures(1, ref textureID);
+
         if (ms_resId2resPathDict.ContainsKey(textureID))
         {
-            GL.DeleteTextures(1, ref textureID);
-
             string path = ms_resId2resPathDict[textureID];
             ms_resPath2resIdDict.Remove(path);
             ms_resId2resPathDict.Remove(textureID);
@@ -111,5 +111,11 @@ public static class Resources
         }
 
         return textureID;
+    }
+
+    public static int LoadTextureFromBytes(byte[] bytes) 
+    {
+         Bitmap bitmap = (Bitmap)Bitmap.FromStream(new MemoryStream(bytes));
+         return LoadTextureFromBitmap(bitmap);
     }
 }

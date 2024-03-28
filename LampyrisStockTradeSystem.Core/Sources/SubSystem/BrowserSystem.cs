@@ -98,15 +98,52 @@ public class BrowserSystem
             // 获取图片的URL
             string imageUrl = webElement.GetAttribute("src");
 
-            // 打印图片的URL
-            Console.WriteLine(imageUrl);
-
             // 同步下载图片
             HttpClient httpClient = new HttpClient();
             byte[] imageBytes = httpClient.GetByteArrayAsync(imageUrl).Result;
 
             // 写入文件
             File.WriteAllBytes(savePath, imageBytes);
+        }
+    }
+
+    public Bitmap GetImageAsBitmap(By by, string savePath, bool isFromSrc = true)
+    {
+        IWebElement webElement = m_chromeDriver.FindElement(by);
+        if (!isFromSrc)
+        {
+            Point location = webElement.Location;
+            Size size = webElement.Size;
+
+            string tempDir = Path.Combine(Path.GetTempPath(), "LampyrisStockTradeSystem");
+            if (!Directory.Exists(tempDir))
+            {
+                Directory.CreateDirectory(tempDir);
+            }
+
+            string tempScreenshotPath = Path.Combine(Path.GetTempPath(), "LampyrisStockTradeSystem/tempScreenshot.png");
+
+            Screenshot screenShot = m_chromeDriver.GetScreenshot();
+            screenShot.SaveAsFile(tempScreenshotPath);
+
+            // 打开图片
+            using (Bitmap original = new Bitmap(tempScreenshotPath))
+            {
+                // 定义截取区域（这里截取原图片的左上角100x100像素的区域）
+                Rectangle section = new Rectangle(location, size);
+                return original.Clone(section, original.PixelFormat);
+            }
+        }
+        else
+        {
+            // 获取图片的URL
+            string imageUrl = webElement.GetAttribute("src");
+
+            // 同步下载图片
+            HttpClient httpClient = new HttpClient();
+            byte[] imageBytes = httpClient.GetByteArrayAsync(imageUrl).Result;
+
+            return (Bitmap)Bitmap.FromStream(new MemoryStream(imageBytes));
         }
     }
 }
