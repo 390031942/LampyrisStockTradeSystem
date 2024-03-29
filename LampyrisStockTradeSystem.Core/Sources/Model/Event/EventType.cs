@@ -9,5 +9,6 @@ namespace LampyrisStockTradeSystem;
 public enum EventType
 {
     UpdateHistoryQuotes,
-    UpdateRealTimeQuotes
+    UpdateRealTimeQuotes,
+    LoginButtonClicked,
 }

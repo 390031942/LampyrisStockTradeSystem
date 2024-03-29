@@ -23,7 +23,7 @@ public class BrowserSystem
     public void Init()
     {
         ChromeOptions Options = new ChromeOptions();
-        Options.AddArgument("--headless"); // 设置为Headless模式
+        // Options.AddArgument("--headless"); // 设置为Headless模式
 
         // 这里指定Chrome.exe和ChromeDriver.exe的位置
         Options.BinaryLocation = AppSettings.Instance.chromeProgramPath;

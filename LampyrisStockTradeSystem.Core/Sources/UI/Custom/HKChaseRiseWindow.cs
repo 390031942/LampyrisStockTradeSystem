@@ -6,6 +6,7 @@
 
 using ImGuiNET;
 using Newtonsoft.Json.Linq;
+using OpenQA.Selenium;
 
 namespace LampyrisStockTradeSystem;
 
@@ -239,17 +240,38 @@ public class HKChaseRiseWindow:Widget
 
 public class HKLinkTradeManager:Singleton<HKLinkTradeManager>
 {
+    [MenuItem("交易/登录")]
+    public static void Login()
+    {
+        if(!HKLinkTradeManager.Instance.isInit)
+        {
+            HKLinkTradeManager.Instance.m_browser.Init();
+            HKLinkTradeManager.Instance.m_isInit = true;
+
+            LifecycleManager.Instance.Get<EventManager>().AddEventHandler(EventType.LoginButtonClicked, (object[] parameters) => 
+            {
+                HKLinkTradeManager.Instance.m_browser.Input(By.Id("txtZjzh"), TradeLoginInfo.Instance.account);
+                HKLinkTradeManager.Instance.m_browser.Input(By.Id("txtPwd"), TradeLoginInfo.Instance.password);
+                HKLinkTradeManager.Instance.m_browser.Input(By.Id("txtValidCode"), (string)parameters[0]);
+                HKLinkTradeManager.Instance.m_browser.Click(By.Id("rdsc45"));
+                HKLinkTradeManager.Instance.m_browser.Click(By.Id("btnConfirm"));
+                WidgetManagement.GetWidget<TradeLoginWindow>().isOpened = false;
+            });
+;        }
+
+        HKLinkTradeManager.Instance.m_browser.Request("https://jywg.18.cn/Login?el=1&clear=&returl=%2fTrade%2fBuy");
+        HKLinkTradeManager.Instance.m_browser.SaveImg(OpenQA.Selenium.By.Id("imgValidCode"), "imgValidCode.png", false);
+
+        Bitmap bitmap = (Bitmap)Bitmap.FromFile("imgValidCode.png");
+
+        WidgetManagement.GetWidget<TradeLoginWindow>().SetValidCodePNGFilePath("imgValidCode.png");
+    }
+
     private BrowserSystem m_browser = new BrowserSystem();
 
-    private bool m_isLogin;
+    private bool m_isInit = false;
 
-    public bool isLogin;
-
-    public void Init()
-    {
-        m_browser.Init();
-        m_browser.SaveImg(OpenQA.Selenium.By.Id("imgValidCode"), "imgValidCode.png", false);
-    }
+    public bool isInit => m_isInit;
 }
 
 [UniqueWidget]
