@@ -21,6 +21,7 @@ public class TradeLoginWindow : Widget
     private int m_textureID = -1;
 
     private string m_inputText = "";
+    public bool isWrongInfo;
 
     public override void OnGUI()
     { 
@@ -32,7 +33,11 @@ public class TradeLoginWindow : Widget
         {
             ImGui.Image((IntPtr)m_textureID, new System.Numerics.Vector2(100, 100));
         }
-        if(ImGui.Button("登录"))
+        if(isWrongInfo)
+        {
+            ImGui.Text("您输入的信息他妈有误!");
+        }
+        if(ImGui.Button("登录") || ImGui.IsKeyDown(ImGuiKey.Enter))
         {
             LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.LoginButtonClicked,new object[] { m_inputText });
         }

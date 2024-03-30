@@ -240,31 +240,99 @@ public class HKChaseRiseWindow:Widget
 
 public class HKLinkTradeManager:Singleton<HKLinkTradeManager>
 {
+    private static Dictionary<int, string> m_ratioCode2Id = new Dictionary<int, string>()
+    {
+        {1,"radall" },
+        {2,"radtwo" },
+        {3,"radstree" },
+        {4,"radfour" },
+    };
+
+    private static void DoSomethingAfterLoginSuccess()
+    {
+        WidgetManagement.GetWidget<TradeLoginWindow>().isOpened = false;
+        MessageBox msgBox = (MessageBox)WidgetManagement.GetWidget<MessageBox>();
+        msgBox.SetContent("交易登录", "登陆成功，准备吃巨肉");
+
+        // 新开4个窗口：一个用于港股买入，一个用于卖出，一个用于撤单，最后一个用于查询成交情况
+        Instance.m_browser.WaitElement(By.XPath("//p[@class='pr10 lh40']/span/a[contains(text(), '退出')]"), 5);
+        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/HKBuy");
+        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/HKSale");
+        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/Revoke");
+        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/QueryTodayDeal");
+
+        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Trade/Buy");
+        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Trade/Sale");
+        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Trade/Revoke");
+        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Search/Deal");
+
+        Instance.m_browser.SwitchToWindow(2);
+    }
+
+    private static void RequestTradeUrl()
+    {
+        Instance.m_browser.Request("https://jywg.18.cn/Login?el=1&clear=&returl=%2fTrade%2fBuy");
+        Instance.m_browser.SaveImg(By.Id("imgValidCode"), "imgValidCode.png", false);
+        Bitmap bitmap = (Bitmap)Bitmap.FromFile("imgValidCode.png");
+        WidgetManagement.GetWidget<TradeLoginWindow>().SetValidCodePNGFilePath("imgValidCode.png");
+    }
+
     [MenuItem("交易/登录")]
     public static void Login()
     {
-        if(!HKLinkTradeManager.Instance.isInit)
+        if (!Instance.isInit)
         {
-            HKLinkTradeManager.Instance.m_browser.Init();
-            HKLinkTradeManager.Instance.m_isInit = true;
+            Instance.m_browser.Init();
+            Instance.m_isInit = true;
 
             LifecycleManager.Instance.Get<EventManager>().AddEventHandler(EventType.LoginButtonClicked, (object[] parameters) => 
             {
-                HKLinkTradeManager.Instance.m_browser.Input(By.Id("txtZjzh"), TradeLoginInfo.Instance.account);
-                HKLinkTradeManager.Instance.m_browser.Input(By.Id("txtPwd"), TradeLoginInfo.Instance.password);
-                HKLinkTradeManager.Instance.m_browser.Input(By.Id("txtValidCode"), (string)parameters[0]);
-                HKLinkTradeManager.Instance.m_browser.Click(By.Id("rdsc45"));
-                HKLinkTradeManager.Instance.m_browser.Click(By.Id("btnConfirm"));
-                WidgetManagement.GetWidget<TradeLoginWindow>().isOpened = false;
+                try
+                {
+                    Instance.m_browser.Click(By.CssSelector(".btn-orange.vbtn-confirm"));
+                }
+                catch(Exception) { }
+                
+                Instance.m_browser.Input(By.Id("txtZjzh"), TradeLoginInfo.Instance.account);
+                Instance.m_browser.Input(By.Id("txtPwd"), TradeLoginInfo.Instance.password);
+                Instance.m_browser.Input(By.Id("txtValidCode"), (string)parameters[0]);
+                Instance.m_browser.Click(By.Id("rdsc45"));
+                Instance.m_browser.Click(By.Id("btnConfirm"));
+
+                try
+                {
+                    // if (!string.IsNullOrEmpty(HKLinkTradeManager.Instance.m_browser.GetText(By.Id("ertips"))))
+                    if(Instance.m_browser.WaitElement(By.Id("ertips"),1000))
+                    {
+                        if(!string.IsNullOrEmpty(HKLinkTradeManager.Instance.m_browser.GetText(By.Id("ertips"))))
+                        {
+                            RequestTradeUrl();
+                            WidgetManagement.GetWidget<TradeLoginWindow>().isWrongInfo = true;
+                        }
+                        else
+                        {
+                            DoSomethingAfterLoginSuccess();
+                        }
+                    }
+                    else
+                    {
+                        DoSomethingAfterLoginSuccess();
+                    }
+                }
+                catch (Exception ex) 
+                {
+                    DoSomethingAfterLoginSuccess();
+                }
             });
 ;        }
 
-        HKLinkTradeManager.Instance.m_browser.Request("https://jywg.18.cn/Login?el=1&clear=&returl=%2fTrade%2fBuy");
-        HKLinkTradeManager.Instance.m_browser.SaveImg(OpenQA.Selenium.By.Id("imgValidCode"), "imgValidCode.png", false);
+        RequestTradeUrl();
+    }
 
-        Bitmap bitmap = (Bitmap)Bitmap.FromFile("imgValidCode.png");
+    [MenuItem("交易/尝试购买")]
+    public static void TryBuy()
+    {
 
-        WidgetManagement.GetWidget<TradeLoginWindow>().SetValidCodePNGFilePath("imgValidCode.png");
     }
 
     private BrowserSystem m_browser = new BrowserSystem();
@@ -272,6 +340,15 @@ public class HKLinkTradeManager:Singleton<HKLinkTradeManager>
     private bool m_isInit = false;
 
     public bool isInit => m_isInit;
+
+    public void ExecuteBuyByRatio(string code,int ratio)
+    {
+        Instance.m_browser.Input(By.Id("stockCode"), code);
+        Instance.m_browser.Click(By.Id(m_ratioCode2Id[ratio]));
+        Instance.m_browser.Click(By.Id("btnConfirm"));
+        Instance.m_browser.Click(By.Id("btn_jh"));
+        Instance.m_browser.Click(By.Id("btnCxcConfirm"));
+    }
 }
 
 [UniqueWidget]

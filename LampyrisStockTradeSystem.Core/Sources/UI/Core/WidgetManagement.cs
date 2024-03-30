@@ -224,7 +224,6 @@ public static class WidgetManagement
 
                     if (!widget.isOpened)
                     {
-                        widget.OnDestroy();
                         m_needRemoveWidgetList.Add(widget);
                         continue;
                     }

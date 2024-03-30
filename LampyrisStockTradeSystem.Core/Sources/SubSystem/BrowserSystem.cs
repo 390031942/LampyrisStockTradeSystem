@@ -6,8 +6,12 @@
 
 namespace LampyrisStockTradeSystem;
 
+using Newtonsoft.Json;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Support.UI;
+using System;
+using System.Collections.ObjectModel;
 
 
 /// <summary>
@@ -33,6 +37,9 @@ public class BrowserSystem
         Service.HideCommandPromptWindow = true; 
         m_chromeDriver = new ChromeDriver(options: Options, service: Service);
         m_chromeDriver.Manage().Window.Size = new Size(1200, 1200);
+
+        // 设置隐式等待时间为0.3秒  
+        m_chromeDriver.Manage().Timeouts().ImplicitWait = TimeSpan.FromSeconds(0.3);
     }
 
     public void Close()
@@ -144,6 +151,55 @@ public class BrowserSystem
             byte[] imageBytes = httpClient.GetByteArrayAsync(imageUrl).Result;
 
             return (Bitmap)Bitmap.FromStream(new MemoryStream(imageBytes));
+        }
+    }
+
+    public bool HasElement(By by)
+    {
+        return m_chromeDriver?.FindElement(by) != null;
+    }
+
+    public string GetText(By by)
+    {
+        return m_chromeDriver?.FindElement(by)?.Text ??  "";
+    }
+
+    public void OpenNewWindow(string url = "")
+    {
+        if(m_chromeDriver != null)
+        {
+            ((IJavaScriptExecutor)m_chromeDriver).ExecuteScript($"window.open('{url}')");
+        }
+    }
+
+    public void SwitchToWindow(int index)
+    {
+        if (m_chromeDriver != null)
+        {
+            List<string> windowHandles = m_chromeDriver.WindowHandles.ToList();
+            if(index >= 0 && index < windowHandles.Count)
+            {
+                m_chromeDriver.SwitchTo().Window(windowHandles[index]);
+            }
+        }
+    }
+
+    public bool WaitElement(By by,double waitTimeSecond)
+    {
+        if (m_chromeDriver == null)
+            return false;
+
+        // 创建一个等待对象，设置最大等待时间
+        WebDriverWait wait = new WebDriverWait(m_chromeDriver, TimeSpan.FromSeconds(waitTimeSecond));
+
+        try
+        {
+            IWebElement wrongInfoElement = wait.Until(d => d.FindElement(by));
+            return true;
+        }
+        catch (WebDriverTimeoutException)
+        {
+            return false;
         }
     }
 }
