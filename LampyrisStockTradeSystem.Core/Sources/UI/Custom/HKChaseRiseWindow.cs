@@ -262,11 +262,11 @@ public class HKLinkTradeManager:Singleton<HKLinkTradeManager>
         // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/QueryTodayDeal");
 
         Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Trade/Buy");
-        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Trade/Sale");
-        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Trade/Revoke");
-        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Search/Deal");
+        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Trade/Sale");
+        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Trade/Revoke");
+        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Search/Deal");
 
-        Instance.m_browser.SwitchToWindow(2);
+        Instance.m_browser.SwitchToWindow(1);
     }
 
     private static void RequestTradeUrl()
@@ -332,7 +332,7 @@ public class HKLinkTradeManager:Singleton<HKLinkTradeManager>
     [MenuItem("交易/尝试购买")]
     public static void TryBuy()
     {
-
+        Instance.ExecuteBuyByRatio("600000", 1);
     }
 
     private BrowserSystem m_browser = new BrowserSystem();
@@ -344,8 +344,10 @@ public class HKLinkTradeManager:Singleton<HKLinkTradeManager>
     public void ExecuteBuyByRatio(string code,int ratio)
     {
         Instance.m_browser.Input(By.Id("stockCode"), code);
+        Instance.m_browser.Click(By.Id("iptCount"));
         Instance.m_browser.Click(By.Id(m_ratioCode2Id[ratio]));
         Instance.m_browser.Click(By.Id("btnConfirm"));
+        Instance.m_browser.Click(By.XPath("//p[@class='btn_jh btnts cl btn btn-default-blue']"));
         Instance.m_browser.Click(By.Id("btn_jh"));
         Instance.m_browser.Click(By.Id("btnCxcConfirm"));
     }
