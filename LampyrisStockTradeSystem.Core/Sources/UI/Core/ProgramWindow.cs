@@ -111,6 +111,7 @@ public class ProgramWindow : GameWindow
         base.OnRenderFrame(e);
 
         LifecycleManager.Instance.Tick();
+        CallTimer.Instance.Update();
 
         Title = "Lampyris股票行情交易平台 OpenGL Version: " + GL.GetString(StringName.Version) + " FPS = " + (int)ImGui.GetIO().Framerate;
 

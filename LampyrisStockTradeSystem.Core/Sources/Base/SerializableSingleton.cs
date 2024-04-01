@@ -31,7 +31,6 @@ public class SerializableSingleton<T> where T : class, new()
                 }
                 else
                 {
-                    // 检查类型T是否实现了IABC接口
                     if (typeof(IPostSerializationHandler).IsAssignableFrom(typeof(T)))
                     {
                         MethodInfo method = typeof(T).GetMethod("PostSerialization");

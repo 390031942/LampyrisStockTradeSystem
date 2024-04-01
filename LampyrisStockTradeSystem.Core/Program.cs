@@ -6,21 +6,29 @@
 namespace LampyrisStockTradeSystem;
 
 using System;
-using System.Collections.Generic;
 
 class Program
 {
     static void Main()
     {
-        LifecycleManager.Instance.StartUp();
+        try
+        {
+            LifecycleManager.Instance.StartUp();
 
-        // 初始化系统托盘程序
-        SystemTrayIcon.Instance.Create();
+            // 初始化系统托盘程序
+            SystemTrayIcon.Instance.Create();
 
-        RuntimeContext.mainWindow = new ProgramWindow();
-        RuntimeContext.mainWindow.Run();
+            RuntimeContext.mainWindow = new ProgramWindow();
+            RuntimeContext.mainWindow.Run();
 
-        LifecycleManager.Instance.ShutDown();
-
+        }
+        catch (Exception ex)
+        {
+            System.Windows.Forms.MessageBox.Show(ex.ToString(), "Crash!!!");
+        }
+        finally
+        {
+            LifecycleManager.Instance.ShutDown();
+        }
     }
 }

@@ -34,7 +34,7 @@ public class RealTimeQuotesSystem
     [PlannedTask(mode: PlannedTaskExecuteMode.ExecuteOnLaunch)]
     public static void OnLaunch()
     {
-        MessageBox msgBox = (MessageBox)WidgetManagement.GetWidget<MessageBox>();
-        msgBox.SetContent("Test Message","Test Content");
+        // MessageBox msgBox = (MessageBox)WidgetManagement.GetWidget<MessageBox>();
+        // msgBox.SetContent("Test Message","Test Content");
     }
 }

@@ -8,9 +8,51 @@ using ImGuiNET;
 using Newtonsoft.Json.Linq;
 using OpenQA.Selenium;
 using System.Numerics;
-using static System.Collections.Specialized.BitVector32;
+using System.Security.Cryptography.X509Certificates;
 
 namespace LampyrisStockTradeSystem;
+
+public class EastMoneyPositionStockInfo
+{
+    public string stockCode;
+    public string stockName;
+    public string count;
+    public string useableCount;
+    public string costPrice;
+    public string currentPrice;
+    public string money;
+    public string profitLose;
+    public string profitLoseRatio;
+    public string todayProfitLost;
+    public string todayProfitLostRatio;
+}
+
+// 持仓信息
+public class EastMoneyPositionInfo
+{
+    // 总资产
+    public string totalMoney;
+
+    // 持仓资产
+    public string positionMoney;
+
+    // 持仓盈亏
+    public string positionProfitLose;
+
+    // 当日盈亏
+    public string todayProfitLose;
+
+    // 可用资金
+    public string canUseMoney;
+
+    public List<EastMoneyPositionStockInfo> stockInfos = new List<EastMoneyPositionStockInfo>();
+}
+
+// 撤单信息
+public class EastMoneyRevokeInfo
+{
+
+}
 
 public class HKChaseRiseQuoteData
 {
@@ -179,9 +221,9 @@ public class HKChaseRiseWindow:Widget
     {
         if (ImGui.BeginTable("HKChaseRiseTotalView", 3)) // 创建一个有3列的表格
         {
-            ImGui.TableSetupColumn("股票名称");
-            ImGui.TableSetupColumn("分时/K线图");
-            ImGui.TableSetupColumn("操作按钮");
+            ImGui.TableSetupColumn("股票名称", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("分时/K线图",ImGuiTableColumnFlags.WidthFixed,400);
+            ImGui.TableSetupColumn("操作按钮",ImGuiTableColumnFlags.WidthFixed,400);
             ImGui.TableHeadersRow();
             
             foreach (HKChaseRiseQuoteData quoteData in m_displayingStockData)
@@ -266,19 +308,73 @@ public class HKLinkTradeManager:Singleton<HKLinkTradeManager>
         MessageBox msgBox = (MessageBox)WidgetManagement.GetWidget<MessageBox>();
         msgBox.SetContent("交易登录", "登陆成功，准备吃巨肉");
 
-        // 新开4个窗口：一个用于港股买入，一个用于卖出，一个用于撤单，最后一个用于查询成交情况
+        // 登陆成功后，右上角会有 退出按钮
         Instance.m_browser.WaitElement(By.XPath("//p[@class='pr10 lh40']/span/a[contains(text(), '退出')]"), 5);
-        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/HKBuy");
-        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/HKSale");
-        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/Revoke");
-        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/QueryTodayDeal");
 
-        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Trade/Buy");
+        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Search/Position");
+        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/HKBuy");
+        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/HKSale");
+        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/Revoke");
+        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/QueryTodayDeal");
+
+        // A股的：
         // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Trade/Sale");
         // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Trade/Revoke");
         // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Search/Deal");
 
-        Instance.m_browser.SwitchToWindow(1);
+        // 关闭A股的买入页面，登录以后会默认跳转这个页面
+        Instance.m_browser.CloseFirstWindowByUrl("https://jywg.18.cn/Trade/Buy");
+
+        // 构造定时器
+        Instance.m_positionUpdateTimer = CallTimer.Instance.SetInterval(() =>
+        {
+            Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Search/Position");
+
+            var positionInfo = new EastMoneyPositionInfo();
+
+            // 定位资产表格元素
+            IWebElement zichanElement = Instance.m_browser.GetWebElement(By.Id("zichan"));
+
+            positionInfo.totalMoney = zichanElement.FindElement(By.XPath("//span[text()='总资产']/following-sibling::span[1]")).Text;
+            positionInfo.positionMoney = zichanElement.FindElement(By.XPath("//span[text()='持仓市值']/following-sibling::span[1]")).Text;
+            positionInfo.positionProfitLose = zichanElement.FindElement(By.XPath("//span[text()='持仓盈亏']/following-sibling::span[1]")).Text;
+            positionInfo.todayProfitLose = zichanElement.FindElement(By.XPath("//span[text()='当日盈亏']/following-sibling::span[1]")).Text;
+            positionInfo.canUseMoney = zichanElement.FindElement(By.XPath("//span[text()='可用资金']/following-sibling::span[1]")).Text;
+
+            // 定位持仓股票信息 表格元素
+            IWebElement tableElement = Instance.m_browser.GetWebElement(By.Id("tabBody"));
+            // 获取所有的行元素
+            IList<IWebElement> tableRows = tableElement.FindElements(By.TagName("tr"));
+
+
+            foreach (var row in tableRows)
+            {
+                // 对于每一行，获取所有的列元素
+                IList<IWebElement> rowTds = row.FindElements(By.TagName("td"));
+
+                positionInfo.stockInfos.Add(new EastMoneyPositionStockInfo()
+                {
+                    stockCode = rowTds[0].FindElement(By.TagName("a")).Text,
+                    stockName = rowTds[1].FindElement(By.TagName("a")).Text,
+                    count = rowTds[2].Text,
+                    useableCount = rowTds[3].Text,
+                    costPrice = rowTds[4].Text,
+                    currentPrice = rowTds[5].Text,
+                    money = rowTds[6].Text,
+                    profitLose = rowTds[7].Text,
+                    profitLoseRatio = rowTds[8].Text,
+                    todayProfitLost = rowTds[9].Text,
+                    todayProfitLostRatio = rowTds[10].Text,
+                });
+            }
+            LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.PositionUpdate, positionInfo);
+        }, 1000);
+
+        Instance.m_revokeUpdateTimer = CallTimer.Instance.SetInterval(() =>
+        {
+            Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/Revoke");
+            LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.RevokeUpdate, new object[] { });
+        }, 1000);
     }
 
     private static void RequestTradeUrl()
@@ -353,6 +449,12 @@ public class HKLinkTradeManager:Singleton<HKLinkTradeManager>
 
     public bool isInit => m_isInit;
 
+    // 持仓更新定时器
+    private int m_positionUpdateTimer = -1;
+
+    // 撤单更新定时器
+    private int m_revokeUpdateTimer = -1;
+
     public void ExecuteBuyByRatio(string code,int ratio)
     {
         By by1 = By.CssSelector($"[id*='{code}']");
@@ -408,8 +510,28 @@ public class HKChaseRiseTradeSubWindow : Widget
     public override void OnAwake()
     {
         base.OnAwake();
-        pos = new Vector2(0, ImGui.GetIO().DisplaySize.Y - 350);
-        size = new Vector2(300, 350);
+        pos = new Vector2(0, ImGui.GetIO().DisplaySize.Y - 200);
+        size = new Vector2(400, 200);
+
+        LifecycleManager.Instance.Get<EventManager>().AddEventHandler(EventType.PositionUpdate, OnPositionUpdate);
+        LifecycleManager.Instance.Get<EventManager>().AddEventHandler(EventType.RevokeUpdate, OnRevokeUpdate);
+    }
+
+    public override void OnDestroy()
+    {
+        LifecycleManager.Instance.Get<EventManager>().RemoveEventHandler(EventType.PositionUpdate, OnPositionUpdate);
+        LifecycleManager.Instance.Get<EventManager>().RemoveEventHandler(EventType.RevokeUpdate, OnRevokeUpdate);
+        base.OnDestroy();
+    }
+
+    public void OnPositionUpdate(object[] parameters)
+    {
+
+    }
+
+    public void OnRevokeUpdate(object[] parameters)
+    {
+
     }
 
     public override string Name => "港股通交易";
@@ -424,10 +546,65 @@ public class HKChaseRiseTradeSubWindow : Widget
         // 创建滚动区域
         ImGui.BeginChild("滚动区域", new Vector2(0, 0), true);
         {
-            // 创建一个可折叠的标题
             if (ImGui.CollapsingHeader("持仓"))
             {
-                ImGui.Text("暂无持仓数据");
+                if (ImGui.BeginTable("HKChaseRiseSubWinOrder", 6)) // 创建一个有3列的表格
+                {
+                    ImGui.TableSetupColumn("代码");
+                    ImGui.TableSetupColumn("名称");
+                    ImGui.TableSetupColumn("成本");
+                    ImGui.TableSetupColumn("数量");
+                    ImGui.TableSetupColumn("浮盈");
+                    ImGui.TableSetupColumn("");
+                    ImGui.TableHeadersRow();
+
+                    ImGui.TableNextRow();
+
+                    ImGui.TableNextColumn();
+                    ImGui.Text("600000");
+                    ImGui.TableNextColumn();
+                    ImGui.Text("浦发银行");
+                    ImGui.TableNextColumn();
+                    ImGui.Text("7.00");
+                    ImGui.TableNextColumn();
+                    ImGui.Text("60000");
+                    ImGui.TableNextColumn();
+                    ImGui.Text("+100000.00");
+                    ImGui.TableNextColumn();
+                    ImGui.Button("卖出");
+
+                    ImGui.EndTable();
+                }
+            }
+            if (ImGui.CollapsingHeader("委托"))
+            {
+                if (ImGui.BeginTable("HKChaseRiseSubWinOwnStock", 6)) // 创建一个有3列的表格
+                {
+                    ImGui.TableSetupColumn("代码");
+                    ImGui.TableSetupColumn("名称");
+                    ImGui.TableSetupColumn("方向");
+                    ImGui.TableSetupColumn("价格");
+                    ImGui.TableSetupColumn("数量");
+                    ImGui.TableSetupColumn("");
+                    ImGui.TableHeadersRow();
+
+                    ImGui.TableNextRow();
+
+                    ImGui.TableNextColumn();
+                    ImGui.Text("600000");
+                    ImGui.TableNextColumn();
+                    ImGui.Text("浦发银行");
+                    ImGui.TableNextColumn();
+                    ImGui.Text("买入");
+                    ImGui.TableNextColumn();
+                    ImGui.Text("7.00");
+                    ImGui.TableNextColumn();
+                    ImGui.Text("60000");
+                    ImGui.TableNextColumn();
+                    ImGui.Button("撤单");
+
+                    ImGui.EndTable();
+                }
             }
         }
         // 结束滚动区域

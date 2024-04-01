@@ -27,7 +27,7 @@ public class BrowserSystem
     public void Init()
     {
         ChromeOptions Options = new ChromeOptions();
-        Options.AddArgument("--headless"); // 设置为Headless模式
+        // Options.AddArgument("--headless"); // 设置为Headless模式
 
         // 这里指定Chrome.exe和ChromeDriver.exe的位置
         Options.BinaryLocation = AppSettings.Instance.chromeProgramPath;
@@ -184,6 +184,45 @@ public class BrowserSystem
         }
     }
 
+    public void SwitchToUrl(string url)
+    {
+        if (m_chromeDriver != null)
+        {
+            List<string> windowHandles = m_chromeDriver.WindowHandles.ToList();
+            foreach (string handle in windowHandles)
+            {
+                // 切换到该窗口
+                m_chromeDriver.SwitchTo().Window(handle);
+                // 检查该窗口的URL是否包含我们想要的URL部分
+                if (m_chromeDriver.Url.Contains(url))
+                {
+                    // 如果是，跳出循环
+                    break;
+                }
+            }
+        }
+    }
+
+    public void CloseFirstWindowByUrl(string url)
+    {
+        if (m_chromeDriver != null)
+        {
+            List<string> windowHandles = m_chromeDriver.WindowHandles.ToList();
+            foreach (string handle in windowHandles)
+            {
+                // 切换到该窗口
+                m_chromeDriver.SwitchTo().Window(handle);
+                // 检查该窗口的URL是否包含我们想要的URL部分
+                if (m_chromeDriver.Url.Contains(url))
+                {
+                    m_chromeDriver.Close();
+                    // 如果是，跳出循环
+                    break;
+                }
+            }
+        }
+    }
+
     public bool WaitElement(By by,double waitTimeSecond)
     {
         if (m_chromeDriver == null)
@@ -194,7 +233,19 @@ public class BrowserSystem
 
         try
         {
-            IWebElement wrongInfoElement = wait.Until(d => d.FindElement(by));
+            IWebElement element = wait.Until(condition =>
+            {
+                try
+                {
+                    var elem = m_chromeDriver.FindElement(by);
+                    return elem.Displayed ? elem : null;
+                }
+                catch (NoSuchElementException)
+                {
+                    return null;
+                }
+            });
+
             return true;
         }
         catch (WebDriverTimeoutException)
@@ -225,5 +276,15 @@ public class BrowserSystem
     public bool IsDisabled(By by)
     {
         return m_chromeDriver?.FindElement(by)?.GetAttribute("disabled") != null;
+    }
+
+    public IWebElement GetWebElement(By by)
+    {
+        return m_chromeDriver?.FindElement(by);
+    }
+
+    public List<IWebElement> GetWebElements(By by)
+    {
+        return m_chromeDriver?.FindElements(by).ToList();
     }
 }

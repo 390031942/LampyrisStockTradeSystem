@@ -406,7 +406,7 @@ public class QuoteDatabase : SerializableSingleton<QuoteDatabase>, IPostSerializ
     /// <summary>
     /// 获取所有股票的实时行情列表
     /// </summary>
-    [PlannedTask(mode: PlannedTaskExecuteMode.ExecuteOnlyOnTime | PlannedTaskExecuteMode.ExecuteAfterTime | PlannedTaskExecuteMode.ExecuteOnLaunch, executeTime = "9:10")]
+    // [PlannedTask(mode: PlannedTaskExecuteMode.ExecuteOnlyOnTime | PlannedTaskExecuteMode.ExecuteAfterTime | PlannedTaskExecuteMode.ExecuteOnLaunch, executeTime = "9:10")]
     public static void GetAllStockData()
     {
         // URL请求返回的Json格式
