@@ -7,6 +7,8 @@
 using ImGuiNET;
 using Newtonsoft.Json.Linq;
 using OpenQA.Selenium;
+using System.Numerics;
+using static System.Collections.Specialized.BitVector32;
 
 namespace LampyrisStockTradeSystem;
 
@@ -163,9 +165,19 @@ public class HKChaseRiseWindow:Widget
 
     private HttpClient httpClient = new HttpClient();
 
+    public override void OnAwake()
+    {
+        WidgetManagement.GetWidget<HKChaseRiseTradeSubWindow>();
+    }
+
+    public override void OnDestroy()
+    {
+        WidgetManagement.GetWidget<HKChaseRiseTradeSubWindow>().isOpened = false;
+    }
+
     public override void OnGUI()
     {
-        if (ImGui.BeginTable("Your Table", 3)) // 创建一个有3列的表格
+        if (ImGui.BeginTable("HKChaseRiseTotalView", 3)) // 创建一个有3列的表格
         {
             ImGui.TableSetupColumn("股票名称");
             ImGui.TableSetupColumn("分时/K线图");
@@ -302,9 +314,9 @@ public class HKLinkTradeManager:Singleton<HKLinkTradeManager>
                 try
                 {
                     // if (!string.IsNullOrEmpty(HKLinkTradeManager.Instance.m_browser.GetText(By.Id("ertips"))))
-                    if(Instance.m_browser.WaitElement(By.Id("ertips"),1000))
+                    if(Instance.m_browser.WaitElement(By.Id("ertips"),1))
                     {
-                        if(!string.IsNullOrEmpty(HKLinkTradeManager.Instance.m_browser.GetText(By.Id("ertips"))))
+                        if(!string.IsNullOrEmpty(Instance.m_browser.GetText(By.Id("ertips"))))
                         {
                             RequestTradeUrl();
                             WidgetManagement.GetWidget<TradeLoginWindow>().isWrongInfo = true;
@@ -343,13 +355,27 @@ public class HKLinkTradeManager:Singleton<HKLinkTradeManager>
 
     public void ExecuteBuyByRatio(string code,int ratio)
     {
+        By by1 = By.CssSelector($"[id*='{code}']");
+        By by2 = By.Id("btnConfirm");
+
         Instance.m_browser.Input(By.Id("stockCode"), code);
-        Instance.m_browser.Click(By.Id("iptCount"));
+        Instance.m_browser.WaitElementWithReturnValue(by1, 5)?.Click();
+ 
         Instance.m_browser.Click(By.Id(m_ratioCode2Id[ratio]));
-        Instance.m_browser.Click(By.Id("btnConfirm"));
-        Instance.m_browser.Click(By.XPath("//p[@class='btn_jh btnts cl btn btn-default-blue']"));
-        Instance.m_browser.Click(By.Id("btn_jh"));
-        Instance.m_browser.Click(By.Id("btnCxcConfirm"));
+
+        try
+        {
+            Instance.m_browser.Click(by2);
+            Instance.m_browser.Click(By.CssSelector("a[data-role='confirm'].btn_jh"));
+            string info = Instance.m_browser.GetText(By.ClassName("cxc_bd"));
+            Instance.m_browser.Click(By.Id("btnCxcConfirm"));
+
+            WidgetManagement.GetWidget<MessageBox>().SetContent("委托买入结果", info);
+        }
+        catch(Exception)
+        {
+            WidgetManagement.GetWidget<MessageBox>().SetContent("委托买入结果", "根本买不了啊，是不是没钱了");
+        }
     }
 }
 
@@ -373,5 +399,38 @@ public class HKChaseRiseBuyWindow : Widget
     public void SetStockQuoteData(HKChaseRiseQuoteData quoteData)
     {
         m_quoteData = quoteData;
+    }
+}
+
+[UniqueWidget]
+public class HKChaseRiseTradeSubWindow : Widget
+{
+    public override void OnAwake()
+    {
+        base.OnAwake();
+        pos = new Vector2(0, ImGui.GetIO().DisplaySize.Y - 350);
+        size = new Vector2(300, 350);
+    }
+
+    public override string Name => "港股通交易";
+
+    private void DrawSingleOwnStock()
+    {
+
+    }
+
+    public override void OnGUI()
+    {
+        // 创建滚动区域
+        ImGui.BeginChild("滚动区域", new Vector2(0, 0), true);
+        {
+            // 创建一个可折叠的标题
+            if (ImGui.CollapsingHeader("持仓"))
+            {
+                ImGui.Text("暂无持仓数据");
+            }
+        }
+        // 结束滚动区域
+        ImGui.EndChild();
     }
 }

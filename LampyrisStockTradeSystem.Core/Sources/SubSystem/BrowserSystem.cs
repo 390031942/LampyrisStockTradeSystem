@@ -27,7 +27,7 @@ public class BrowserSystem
     public void Init()
     {
         ChromeOptions Options = new ChromeOptions();
-        // Options.AddArgument("--headless"); // 设置为Headless模式
+        Options.AddArgument("--headless"); // 设置为Headless模式
 
         // 这里指定Chrome.exe和ChromeDriver.exe的位置
         Options.BinaryLocation = AppSettings.Instance.chromeProgramPath;
@@ -201,5 +201,29 @@ public class BrowserSystem
         {
             return false;
         }
+    }
+
+    public IWebElement WaitElementWithReturnValue(By by, double waitTimeSecond)
+    {
+        if (m_chromeDriver == null)
+            return null;
+
+        // 创建一个等待对象，设置最大等待时间
+        WebDriverWait wait = new WebDriverWait(m_chromeDriver, TimeSpan.FromSeconds(waitTimeSecond));
+
+        try
+        {
+            IWebElement wrongInfoElement = wait.Until(d => d.FindElement(by));
+            return wrongInfoElement;
+        }
+        catch (WebDriverTimeoutException)
+        {
+            return null;
+        }
+    }
+
+    public bool IsDisabled(By by)
+    {
+        return m_chromeDriver?.FindElement(by)?.GetAttribute("disabled") != null;
     }
 }

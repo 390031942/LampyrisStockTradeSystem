@@ -41,7 +41,7 @@ public abstract class Widget
     // 需要在下一帧调整调整
     private bool m_needSetPosNextFrame;
 
-    public virtual ImGuiWindowFlags windowFlags { get; } = ImGuiWindowFlags.None;
+    public virtual ImGuiWindowFlags windowFlags { get; } = ImGuiWindowFlags.AlwaysAutoResize|ImGuiWindowFlags.NoSavedSettings;
 
     // 上一帧时的窗口大小
     public Vector2 previousFrameSize { get; private set; }

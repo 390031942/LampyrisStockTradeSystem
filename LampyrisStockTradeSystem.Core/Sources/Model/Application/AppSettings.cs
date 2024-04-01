@@ -9,9 +9,9 @@ namespace LampyrisStockTradeSystem;
 [Serializable]
 public class AppSettings:SerializableSingleton<AppSettings>
 {
-    private string m_chromeProgramPath = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+    private string m_chromeProgramPath = "chrome-win64\\chrome.exe";
 
-    private string m_chromeDriverProgramPath = "C:\\Program Files\\Google\\Chrome\\Application\\chromedriver.exe";
+    private string m_chromeDriverProgramPath = "chrome-win64\\chromedriver.exe";
 
     public string chromeProgramPath => m_chromeProgramPath;
 
