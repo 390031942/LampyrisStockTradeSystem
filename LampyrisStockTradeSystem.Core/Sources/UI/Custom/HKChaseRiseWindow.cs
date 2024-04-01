@@ -507,6 +507,10 @@ public class HKChaseRiseBuyWindow : Widget
 [UniqueWidget]
 public class HKChaseRiseTradeSubWindow : Widget
 {
+    private EastMoneyPositionInfo m_positionInfo;
+    public override string Name => "港股通交易";
+
+
     public override void OnAwake()
     {
         base.OnAwake();
@@ -526,17 +530,10 @@ public class HKChaseRiseTradeSubWindow : Widget
 
     public void OnPositionUpdate(object[] parameters)
     {
-
+        m_positionInfo = (EastMoneyPositionInfo)parameters[0];
     }
 
     public void OnRevokeUpdate(object[] parameters)
-    {
-
-    }
-
-    public override string Name => "港股通交易";
-
-    private void DrawSingleOwnStock()
     {
 
     }
@@ -548,32 +545,61 @@ public class HKChaseRiseTradeSubWindow : Widget
         {
             if (ImGui.CollapsingHeader("持仓"))
             {
-                if (ImGui.BeginTable("HKChaseRiseSubWinOrder", 6)) // 创建一个有3列的表格
+                if(m_positionInfo != null)
                 {
-                    ImGui.TableSetupColumn("代码");
-                    ImGui.TableSetupColumn("名称");
-                    ImGui.TableSetupColumn("成本");
-                    ImGui.TableSetupColumn("数量");
-                    ImGui.TableSetupColumn("浮盈");
-                    ImGui.TableSetupColumn("");
-                    ImGui.TableHeadersRow();
+                    ImGui.Text("总市值:" + m_positionInfo.totalMoney);
+                    ImGui.SameLine();
 
-                    ImGui.TableNextRow();
+                    ImGui.Text("持仓市值" + m_positionInfo.positionMoney);
+                    ImGui.SameLine();
 
-                    ImGui.TableNextColumn();
-                    ImGui.Text("600000");
-                    ImGui.TableNextColumn();
-                    ImGui.Text("浦发银行");
-                    ImGui.TableNextColumn();
-                    ImGui.Text("7.00");
-                    ImGui.TableNextColumn();
-                    ImGui.Text("60000");
-                    ImGui.TableNextColumn();
-                    ImGui.Text("+100000.00");
-                    ImGui.TableNextColumn();
-                    ImGui.Button("卖出");
+                    ImGui.Text("持仓盈亏" + m_positionInfo.positionProfitLose);
 
-                    ImGui.EndTable();
+                    ImGui.Text("当日盈亏" + m_positionInfo.todayProfitLose);
+                    ImGui.SameLine();
+                    ImGui.Text("可用资金" + m_positionInfo.canUseMoney);
+
+                    if (m_positionInfo.stockInfos.Count > 0)
+                    {
+                        if (ImGui.BeginTable("HKChaseRiseSubWinOrder", 6)) // 创建一个有3列的表格
+                        {
+                            ImGui.TableSetupColumn("代码");
+                            ImGui.TableSetupColumn("名称");
+                            ImGui.TableSetupColumn("成本");
+                            ImGui.TableSetupColumn("数量");
+                            ImGui.TableSetupColumn("浮盈");
+                            ImGui.TableSetupColumn("");
+                            ImGui.TableHeadersRow();
+
+                            foreach(EastMoneyPositionStockInfo stockInfo in m_positionInfo.stockInfos)
+                            {
+                                ImGui.TableNextRow();
+
+                                ImGui.TableNextColumn();
+                                ImGui.Text(stockInfo.stockCode);
+                                ImGui.TableNextColumn();
+                                ImGui.Text(stockInfo.stockName);
+                                ImGui.TableNextColumn();
+                                ImGui.Text(stockInfo.costPrice);
+                                ImGui.TableNextColumn();
+                                ImGui.Text(stockInfo.count);
+                                ImGui.TableNextColumn();
+                                ImGui.Text(stockInfo.profitLose);
+                                ImGui.TableNextColumn();
+                                ImGui.Button("卖出");
+                            }
+
+                            ImGui.EndTable();
+                        }
+                    }
+                    else
+                    {
+                        ImGui.Text("暂无持仓股票");
+                    }
+                }
+                else
+                {
+
                 }
             }
             if (ImGui.CollapsingHeader("委托"))
