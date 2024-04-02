@@ -1,9 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 程序全局事件类型定义
+*/
 namespace LampyrisStockTradeSystem;
 
 public enum EventType

@@ -12,4 +12,7 @@ public static class RuntimeContext
 
     // 主窗口类对象
     public static ProgramWindow mainWindow;
+
+    // 主窗口句柄
+    public static IntPtr mainWindowPtr;
 }

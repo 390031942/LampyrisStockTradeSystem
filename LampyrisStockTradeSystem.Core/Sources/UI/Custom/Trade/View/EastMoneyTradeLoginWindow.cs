@@ -16,7 +16,7 @@ public class TradeLoginInfo:SerializableSingleton<TradeLoginInfo>
 }
 
 [UniqueWidget]
-public class TradeLoginWindow : Widget
+public class EastMoneyTradeLoginWindow : Widget
 {
     private int m_textureID = -1;
 

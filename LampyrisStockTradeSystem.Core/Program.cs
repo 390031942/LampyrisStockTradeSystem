@@ -5,11 +5,17 @@
 */
 namespace LampyrisStockTradeSystem;
 
+using OpenTK.Windowing.GraphicsLibraryFramework;
 using System;
+using System.Runtime.InteropServices;
+using static LampyrisStockTradeSystem.IconFlashTips;
 
 class Program
 {
-    static void Main()
+    [DllImport("user32.dll", SetLastError = true)]
+    static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+    static unsafe void Main()
     {
         try
         {
@@ -19,6 +25,7 @@ class Program
             SystemTrayIcon.Instance.Create();
 
             RuntimeContext.mainWindow = new ProgramWindow();
+            RuntimeContext.mainWindowPtr = FindWindow("GLFW30", "OpenTK Window");
             RuntimeContext.mainWindow.Run();
 
         }
@@ -30,5 +37,13 @@ class Program
         {
             LifecycleManager.Instance.ShutDown();
         }
+    }
+
+    [MenuItem("调试/闪烁窗口")]
+    public static void Flash()
+    {
+        CallTimer.Instance.SetInterval(() => {
+            IconFlashTips.Flash(RuntimeContext.mainWindowPtr, IconFlashTips.FLASHW_TIMER);
+        }, 3000, 1);
     }
 }

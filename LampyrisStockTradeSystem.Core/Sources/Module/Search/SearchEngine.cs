@@ -15,6 +15,7 @@ public enum SearchResultType
     BZ_A = 3,
     ChiNext = 5,
     Index = 6,
+    HKLink = 7, // 港股通 
 }
 
 public class SearchResult
@@ -50,6 +51,8 @@ public class SearchEngine : Singleton<SearchEngine>
                 return "科创";
             case SearchResultType.AppFunction:
                 return "功能";
+            case SearchResultType.HKLink:
+                return "港股";
         }
 
         return "未知";
