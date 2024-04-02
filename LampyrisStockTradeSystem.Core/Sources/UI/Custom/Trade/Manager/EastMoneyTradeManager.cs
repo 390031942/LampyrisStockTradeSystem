@@ -1,7 +1,36 @@
 using OpenQA.Selenium;
+using System.Text;
 
 namespace LampyrisStockTradeSystem;
 
+public enum EastMoneyTradeMode
+{
+    Normal = 0, // 普通沪深A股模式
+    HKLink = 1,// 港股通模式
+    MarginTrade = 2, // 融资融券模式(暂不支持)
+    Count = 3 // 数量
+}
+
+public class EastMoneyTradeModeName:Singleton<EastMoneyTradeModeName>
+{
+    public string this[EastMoneyTradeMode mode]
+    {
+        get
+        {
+            switch(mode)
+            {
+                case EastMoneyTradeMode.Normal:
+                    return "沪深A股";
+                case EastMoneyTradeMode.HKLink:
+                    return "港股通";
+                case EastMoneyTradeMode.MarginTrade:
+                    return "融资融券";
+                default:
+                    return "";
+            }
+        }
+    }
+}
 public enum EastMoneyTradeFunctionType
 {
     Position = 0, // 持仓
@@ -14,12 +43,56 @@ public enum EastMoneyTradeFunctionType
     HistoryDeal = 7, // 历史成交
 }
 
-public class EastMoneyTradeGetter
+// 不同EastMoneyTradeMode下，不同的交易功能 有不同的请求url，这里用一个字典保存
+public class EastMoneyTradeUrlGetter:Singleton<EastMoneyTradeUrlGetter>
 {
+    private Dictionary<EastMoneyTradeMode, Dictionary<EastMoneyTradeFunctionType, string>> m_map = new Dictionary<EastMoneyTradeMode, Dictionary<EastMoneyTradeFunctionType, string>>()
+    {
+        { EastMoneyTradeMode.Normal,new Dictionary<EastMoneyTradeFunctionType, string>()
+        {
+            { EastMoneyTradeFunctionType.Position,"https://jywg.18.cn/Search/Position" },
+            { EastMoneyTradeFunctionType.Buy,"https://jywg.18.cn/Trade/Buy" },
+            { EastMoneyTradeFunctionType.Sell,"https://jywg.18.cn/Trade/Sale" },
+            { EastMoneyTradeFunctionType.Revoke,"https://jywg.18.cn/Trade/Revoke" },
+            { EastMoneyTradeFunctionType.TodayOrder,"https://jywg.18.cn/Search/Orders" },
+            { EastMoneyTradeFunctionType.TodayDeal,"https://jywg.18.cn/Search/Deal" },
+            { EastMoneyTradeFunctionType.HistoryOrder,"https://jywg.18.cn/Search/HisOrders" },
+            { EastMoneyTradeFunctionType.HistoryDeal,"https://jywg.18.cn/Search/HisDeal" },
+        } },
 
+        { EastMoneyTradeMode.HKLink,new Dictionary<EastMoneyTradeFunctionType, string>()
+        {
+            { EastMoneyTradeFunctionType.Position,"https://jywg.18.cn/Search/Position" },
+            { EastMoneyTradeFunctionType.Buy,"https://jywg.18.cn/HKTrade/HKBuy" },
+            { EastMoneyTradeFunctionType.Sell,"https://jywg.18.cn/HKTrade/HKSale" },
+            { EastMoneyTradeFunctionType.Revoke,"https://jywg.18.cn/HKTrade/Revoke" },
+            { EastMoneyTradeFunctionType.TodayOrder,"https://jywg.18.cn/HKTrade/QueryTodayOrder" },
+            { EastMoneyTradeFunctionType.TodayDeal,"https://jywg.18.cn/HKTrade/QueryTodayDeal" },
+            { EastMoneyTradeFunctionType.HistoryOrder,"https://jywg.18.cn/HKTrade/QueryHistoryOrder" },
+            { EastMoneyTradeFunctionType.HistoryDeal,"https://jywg.18.cn/HKTrade/QueryHistoryDeal" },
+        } },
+    };
+
+    public string this[EastMoneyTradeMode mode, EastMoneyTradeFunctionType type]
+    {
+        get
+        {
+            if(m_map.ContainsKey(mode))
+            {
+                var subMap = m_map[mode];
+                if(subMap.ContainsKey(type))
+                {
+                    return subMap[type];
+                }
+            }
+            return "";
+        }
+    }
 }
+
 public class EastMoneyTradeManager:Singleton<EastMoneyTradeManager>
 {
+    // 东方财富网页交易上的仓位选择，分别对应: 全仓，1/2仓, 1/3仓，1/4仓
     private static Dictionary<int, string> m_ratioCode2Id = new Dictionary<int, string>()
     {
         {1,"radall" },
