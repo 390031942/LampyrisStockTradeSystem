@@ -20,4 +20,17 @@ public static class PathUtil
             return path;
         }
     }
+
+    public static string CookieDataSavePath
+    {
+        get
+        {
+            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), AppConfig.CookieFolder);
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+            return path;
+        }
+    }
 }

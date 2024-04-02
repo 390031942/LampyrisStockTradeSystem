@@ -13,6 +13,7 @@ public enum EventType
 
     // 自动化下单相关
     LoginButtonClicked,
+    LoginStateChanged, // 登陆状态发生改变
     PositionUpdate, // 持仓更新
     RevokeUpdate, // 撤单更新
 }

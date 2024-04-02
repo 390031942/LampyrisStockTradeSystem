@@ -1,9 +1,9 @@
-﻿using ImGuiNET;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description:东方财富通交易模式选择 窗口
+*/
+using ImGuiNET;
 
 namespace LampyrisStockTradeSystem;
 

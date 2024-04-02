@@ -11,7 +11,6 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
 using System;
-using System.Collections.ObjectModel;
 
 
 /// <summary>
@@ -28,6 +27,8 @@ public class BrowserSystem
     {
         ChromeOptions Options = new ChromeOptions();
         // Options.AddArgument("--headless"); // 设置为Headless模式
+        // Options.AddArgument($"user-data-dir={PathUtil.CookieDataSavePath}");
+        Options.AddArgument("--ignore-certificate-errors");
 
         // 这里指定Chrome.exe和ChromeDriver.exe的位置
         Options.BinaryLocation = AppSettings.Instance.chromeProgramPath;
@@ -49,7 +50,8 @@ public class BrowserSystem
 
     public void Request(string url)
     {
-        m_chromeDriver.Url = url;
+        m_chromeDriver.Navigate().GoToUrl(url);
+        // m_chromeDriver.Url = url;
     }
 
     public string GetCurrentUrl()
@@ -287,4 +289,54 @@ public class BrowserSystem
     {
         return m_chromeDriver?.FindElements(by).ToList();
     }
+
+    public void SetCookiesFromOther(BrowserSystem otherBrowserSystem,Func<string,bool> domainFilterFunc,string domainReplacement = "")
+    {
+        if(m_chromeDriver == null || otherBrowserSystem == null || otherBrowserSystem.m_chromeDriver == null) 
+            return;
+
+        var col = m_chromeDriver.Manage().Cookies.AllCookies;
+        foreach (var cookie in (otherBrowserSystem.m_chromeDriver.Manage().Cookies.AllCookies))
+        {
+            if (domainFilterFunc == null || domainFilterFunc(cookie.Domain))
+            {
+                m_chromeDriver.Manage().Cookies.AddCookie(new OpenQA.Selenium.Cookie(cookie.Name, cookie.Value, string.IsNullOrEmpty(domainReplacement) ? cookie.Domain : domainReplacement, cookie.Path, cookie.Expiry));
+            }
+        }
+    }
+
+    public List<Cookie> GetPureDomainCookies(ICollection<Cookie> cookies)
+    {
+        // 做一个域到cookie的映射
+        Dictionary<string, List<Cookie>> domain2cookie = new Dictionary<string, List<Cookie>>();
+
+        foreach (Cookie cookie in cookies)
+        {
+            string domain = cookie.Domain;
+            if (domain2cookie.ContainsKey(domain))
+            {
+                domain2cookie[domain].Add(cookie);
+            }
+            else
+            {
+                domain2cookie[domain] = new List<Cookie> { cookie };
+            }
+        }
+
+        int maxCnt = 0;
+        string ansDomain = "";
+        foreach (var domain in domain2cookie.Keys)
+        {
+            int cnt = domain2cookie[domain].Count;
+            if (cnt > maxCnt)
+            {
+                maxCnt = cnt;
+                ansDomain = domain;
+            }
+        }
+
+        List<Cookie> ansCookies = domain2cookie[ansDomain];
+        return ansCookies;
+    }
+
 }

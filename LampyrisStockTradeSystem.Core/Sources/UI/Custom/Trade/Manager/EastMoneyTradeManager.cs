@@ -1,4 +1,5 @@
 using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
 using System.Text;
 
 namespace LampyrisStockTradeSystem;
@@ -41,6 +42,7 @@ public enum EastMoneyTradeFunctionType
     TodayDeal = 5, // 当日成交
     HistoryOrder = 6, // 历史委托
     HistoryDeal = 7, // 历史成交
+    Count = 8, 
 }
 
 // 不同EastMoneyTradeMode下，不同的交易功能 有不同的请求url，这里用一个字典保存
@@ -101,6 +103,27 @@ public class EastMoneyTradeManager:Singleton<EastMoneyTradeManager>
         {4,"radfour" },
     };
 
+    // 浏览器模拟操作
+    private BrowserSystem m_browser = new BrowserSystem();
+
+    private BrowserSystem m_browser1 = new BrowserSystem();
+
+    // 是不是初始化浏览器
+    private bool m_isInit = false;
+
+    // 是不是登录了交易系统
+    private bool m_isLoggedIn = false;
+
+    public bool isInit => m_isInit;
+
+    public bool isLoggedIn => m_isLoggedIn;
+
+    // 持仓更新定时器
+    private int m_positionUpdateTimer = -1;
+
+    // 撤单更新定时器
+    private int m_revokeUpdateTimer = -1;
+
     private static void DoSomethingAfterLoginSuccess()
     {
         WidgetManagement.GetWidget<EastMoneyTradeLoginWindow>().isOpened = false;
@@ -110,16 +133,21 @@ public class EastMoneyTradeManager:Singleton<EastMoneyTradeManager>
         // 登陆成功后，右上角会有 退出按钮
         Instance.m_browser.WaitElement(By.XPath("//p[@class='pr10 lh40']/span/a[contains(text(), '退出')]"), 5);
 
-        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Search/Position");
-        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/HKBuy");
-        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/HKSale");
-        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/Revoke");
-        Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/QueryTodayDeal");
+        // 根据交易功能数量 打开多个网页窗口
+        var mode = (EastMoneyTradeMode)EastMoneyTradeModeSetting.Instance.activeMode;
+        for(int i = 0; i < (int)EastMoneyTradeFunctionType.Count;i++)
+        {
+            Instance.m_browser.OpenNewWindow(EastMoneyTradeUrlGetter.Instance[mode, (EastMoneyTradeFunctionType)i]);
+        }
 
-        // A股的：
-        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Trade/Sale");
-        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Trade/Revoke");
-        // Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Search/Deal");
+        Instance.m_browser1.Request("https://jywg.18.cn");
+
+        Instance.m_browser1.SetCookiesFromOther(Instance.m_browser, (domain) => { return domain.Contains("18.cn");  },".18.cn");
+
+        for (int i = 0; i < (int)EastMoneyTradeFunctionType.Count; i++)
+        {
+            Instance.m_browser1.OpenNewWindow(EastMoneyTradeUrlGetter.Instance[mode, (EastMoneyTradeFunctionType)i]);
+        }
 
         // 关闭A股的买入页面，登录以后会默认跳转这个页面
         Instance.m_browser.CloseFirstWindowByUrl("https://jywg.18.cn/Trade/Buy");
@@ -127,15 +155,15 @@ public class EastMoneyTradeManager:Singleton<EastMoneyTradeManager>
         // 构造定时器
         Instance.m_positionUpdateTimer = CallTimer.Instance.SetInterval(() =>
         {
-            Instance.m_browser.OpenNewWindow("https://jywg.18.cn/Search/Position");
+            Instance.m_browser.SwitchToUrl(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Position]);
 
             var positionInfo = new EastMoneyPositionInfo();
 
             // 定位资产表格元素
-            IWebElement zichanElement = Instance.m_browser.GetWebElement(By.Id("zichan"));
+            IWebElement zichanElement = Instance.m_browser.GetWebElement(By.ClassName("zichan"));
 
             positionInfo.totalMoney = zichanElement.FindElement(By.XPath("//span[text()='总资产']/following-sibling::span[1]")).Text;
-            positionInfo.positionMoney = zichanElement.FindElement(By.XPath("//span[text()='持仓市值']/following-sibling::span[1]")).Text;
+            positionInfo.positionMoney = zichanElement.FindElement(By.XPath("//span[text()='总市值']/following-sibling::span[1]")).Text;
             positionInfo.positionProfitLose = zichanElement.FindElement(By.XPath("//span[text()='持仓盈亏']/following-sibling::span[1]")).Text;
             positionInfo.todayProfitLose = zichanElement.FindElement(By.XPath("//span[text()='当日盈亏']/following-sibling::span[1]")).Text;
             positionInfo.canUseMoney = zichanElement.FindElement(By.XPath("//span[text()='可用资金']/following-sibling::span[1]")).Text;
@@ -167,13 +195,27 @@ public class EastMoneyTradeManager:Singleton<EastMoneyTradeManager>
                 });
             }
             LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.PositionUpdate, positionInfo);
-        }, 1000);
+        }, 3000);
 
-        Instance.m_revokeUpdateTimer = CallTimer.Instance.SetInterval(() =>
+        // Instance.m_revokeUpdateTimer = CallTimer.Instance.SetInterval(() =>
+        // {
+        //     Instance.m_browser.SwitchToUrl(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Revoke]);
+        // 
+        //     LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.RevokeUpdate, new object[] { });
+        // }, 1000);
+
+        // 三小时后登陆失效,10800000 = 3 * 3600 * 1000ms 
+        CallTimer.Instance.SetInterval(() =>
         {
-            Instance.m_browser.OpenNewWindow("https://jywg.18.cn/HKTrade/Revoke");
-            LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.RevokeUpdate, new object[] { });
-        }, 1000);
+            // 记录登陆状态，抛出事件，并关闭所有浏览器窗口,回到登录界面
+            WidgetManagement.GetWidget<MessageBox>().SetContent("交易系统提醒", "您已经登录了超过3个小时，该重新登陆了!");
+            Instance.m_isLoggedIn = false;
+            LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.LoginStateChanged, false);
+        }, 10800000);
+
+        // 记录登陆状态
+        Instance.m_isLoggedIn = true;
+        LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.LoginStateChanged, true);
     }
 
     private static void RequestTradeUrl()
@@ -190,6 +232,8 @@ public class EastMoneyTradeManager:Singleton<EastMoneyTradeManager>
         if (!Instance.isInit)
         {
             Instance.m_browser.Init();
+            Instance.m_browser1.Init();
+
             Instance.m_isInit = true;
 
             LifecycleManager.Instance.Get<EventManager>().AddEventHandler(EventType.LoginButtonClicked, (object[] parameters) => 
@@ -241,18 +285,6 @@ public class EastMoneyTradeManager:Singleton<EastMoneyTradeManager>
     {
         Instance.ExecuteBuyByRatio("600000", 1);
     }
-
-    private BrowserSystem m_browser = new BrowserSystem();
-
-    private bool m_isInit = false;
-
-    public bool isInit => m_isInit;
-
-    // 持仓更新定时器
-    private int m_positionUpdateTimer = -1;
-
-    // 撤单更新定时器
-    private int m_revokeUpdateTimer = -1;
 
     public void ExecuteBuyByRatio(string code,int ratio)
     {

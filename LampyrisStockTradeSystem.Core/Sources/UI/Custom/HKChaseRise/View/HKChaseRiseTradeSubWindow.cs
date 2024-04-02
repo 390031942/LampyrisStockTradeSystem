@@ -14,6 +14,7 @@ public class HKChaseRiseTradeSubWindow : Widget
     private EastMoneyPositionInfo m_positionInfo;
     public override string Name => "港股通交易";
 
+    public override ImGuiWindowFlags windowFlags => ImGuiWindowFlags.None;
 
     public override void OnAwake()
     {
@@ -53,6 +54,15 @@ public class HKChaseRiseTradeSubWindow : Widget
 
     public override void OnGUI()
     {
+        if(!EastMoneyTradeManager.Instance.isLoggedIn)
+        {
+            ImGui.Text("暂未登录东方财富交易,请登录!");
+            if(ImGui.Button("登录"))
+            {
+                EastMoneyTradeManager.Login();
+            }
+            return;
+        }
         // 创建滚动区域
         ImGui.BeginChild("滚动区域", new Vector2(0, 0), true);
         {
@@ -112,7 +122,7 @@ public class HKChaseRiseTradeSubWindow : Widget
                 }
                 else
                 {
-
+                    ImGui.Text("暂无持仓数据");
                 }
             }
             if (ImGui.CollapsingHeader("委托"))

@@ -8,7 +8,8 @@ namespace LampyrisStockTradeSystem;
 public static class AppConfig
 {
     public static string AppName = "Lampyris股票行情交易平台";
-    public static string AppDocFolderName = "LampyrisStockTradeSystem";
+    public static string AppDocFolderName = "LampyrisStockTradeSystem/AppData";
+    public static string CookieFolder = "LampyrisStockTradeSystem/Cookie";
     public static Version Version = new Version(0, 0, 1);
 
     // For EastMoney
