@@ -190,7 +190,7 @@ public class HKChaseRiseWindow:Widget
 
     public override void OnGUI()
     {
-        if (ImGui.BeginTable("HKChaseRiseTotalView", 3)) // 创建一个有3列的表格
+        if (ImGui.BeginTable("HKChaseRiseTotalView", 3))
         {
             ImGui.TableSetupColumn("股票名称", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableSetupColumn("分时/K线图",ImGuiTableColumnFlags.WidthFixed,400);

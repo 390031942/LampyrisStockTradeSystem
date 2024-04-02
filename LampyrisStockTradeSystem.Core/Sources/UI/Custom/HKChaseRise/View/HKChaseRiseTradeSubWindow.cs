@@ -1,7 +1,7 @@
 ﻿/*
 ** Author: wushuhong
 ** Contact: gameta@qq.com
-** Description: 港股通全景图右下角的交易小窗口
+** Description: 港股通全景图左下角的交易小窗口
 */
 using ImGuiNET;
 using System.Numerics;
@@ -74,7 +74,7 @@ public class HKChaseRiseTradeSubWindow : Widget
 
                     if (m_positionInfo.stockInfos.Count > 0)
                     {
-                        if (ImGui.BeginTable("HKChaseRiseSubWinOrder", 6)) // 创建一个有3列的表格
+                        if (ImGui.BeginTable("HKChaseRiseSubWinOrder", 6))
                         {
                             ImGui.TableSetupColumn("代码");
                             ImGui.TableSetupColumn("名称");
@@ -117,7 +117,7 @@ public class HKChaseRiseTradeSubWindow : Widget
             }
             if (ImGui.CollapsingHeader("委托"))
             {
-                if (ImGui.BeginTable("HKChaseRiseSubWinOwnStock", 6)) // 创建一个有3列的表格
+                if (ImGui.BeginTable("HKChaseRiseSubWinOwnStock", 6))
                 {
                     ImGui.TableSetupColumn("代码");
                     ImGui.TableSetupColumn("名称");

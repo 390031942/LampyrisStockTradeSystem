@@ -2,6 +2,22 @@ using OpenQA.Selenium;
 
 namespace LampyrisStockTradeSystem;
 
+public enum EastMoneyTradeFunctionType
+{
+    Position = 0, // 持仓
+    Buy = 1,// 买入
+    Sell = 2, // 卖出
+    Revoke = 3, // 撤单
+    TodayOrder = 4, // 当日委托
+    TodayDeal = 5, // 当日成交
+    HistoryOrder = 6, // 历史委托
+    HistoryDeal = 7, // 历史成交
+}
+
+public class EastMoneyTradeGetter
+{
+
+}
 public class EastMoneyTradeManager:Singleton<EastMoneyTradeManager>
 {
     private static Dictionary<int, string> m_ratioCode2Id = new Dictionary<int, string>()
