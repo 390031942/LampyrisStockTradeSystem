@@ -76,7 +76,7 @@ public class HKChaseRiseWindow:Widget
     /// <summary>
     /// 刷新港股通所有股票的行情
     /// </summary>
-    [PlannedTask(executeTime ="09:29-16:10",executeMode = PlannedTaskExecuteMode.ExecuteDuringTime,intervalMs = 3000)]
+    [PlannedTask(executeTime ="09:29-16:10",executeMode = PlannedTaskExecuteMode.ExecuteDuringTime,intervalMs = 100)]
     public static void RefreshHKStockQuote()
     {
         HttpRequest.Get(StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.HKLink), (string json) => {
@@ -162,10 +162,10 @@ public class HKChaseRiseWindow:Widget
                                 HKChaseRiseQuoteData stockData = m_hkStockList[i];
                                 StockRealTimeQuoteData realTimeQuoteData = (StockRealTimeQuoteData)(stockData.quoteData.realTimeQuoteData);
 
-                                // if ((realTimeQuoteData.kLineData.closePrice > 1.5f ? (realTimeQuoteData.riseSpeed > 1.5f) : (realTimeQuoteData.riseSpeed > 2.0f)))
-                                if (realTimeQuoteData.riseSpeed > 1.5f)
+                                if ((realTimeQuoteData.kLineData.closePrice > 1.5f ? (realTimeQuoteData.riseSpeed > 1.5f) : (realTimeQuoteData.riseSpeed > 2.0f)))
+                                // if (realTimeQuoteData.riseSpeed > 1.5f)
                                 {
-                                    if(stockData.moneyRank < 1.5f)
+                                    if(stockData.moneyRank < 0.5f)
                                     {
                                         int ms = DateTime.Now.Millisecond;
                                         if (ms - stockData.lastUnusualTimestamp > 300 * 1000 || stockData.lastUnusualTimestamp <= 0)
@@ -203,7 +203,7 @@ public class HKChaseRiseWindow:Widget
         m_imageUpdateTimeCounter += ImGui.GetIO().DeltaTime;
 
         bool needRefreshImage = false;
-        if(m_imageUpdateTimeCounter >= 2.0f)
+        if(m_imageUpdateTimeCounter >= 0.1f)
         {
             needRefreshImage = true;
             m_imageUpdateTimeCounter = 0.0f;
