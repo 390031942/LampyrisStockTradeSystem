@@ -26,6 +26,9 @@ public class HKChaseRiseQuoteData
     public int todayImageTextureId;
     public bool isReloadToday = false;
 
+    // 异步加载任务
+    public Task<byte[]>? loadTodayImageTask;
+    public Task<byte[]>? loadkLineImageTask;
 
     // 日内 分钟-分时图 破新高次数
     public int breakthroughTimes;
@@ -35,7 +38,7 @@ public class HKChaseRiseQuoteData
 
     public bool displayingToday = true;
 
-    public Task<byte[]>? loadImageTask;
+
 
     public int lastUnusualTimestamp = -1;
 }
@@ -162,10 +165,10 @@ public class HKChaseRiseWindow:Widget
                                 HKChaseRiseQuoteData stockData = m_hkStockList[i];
                                 StockRealTimeQuoteData realTimeQuoteData = (StockRealTimeQuoteData)(stockData.quoteData.realTimeQuoteData);
 
-                                if ((realTimeQuoteData.kLineData.closePrice > 1.5f ? (realTimeQuoteData.riseSpeed > 1.5f) : (realTimeQuoteData.riseSpeed > 2.0f)))
-                                // if (realTimeQuoteData.riseSpeed > 1.5f)
+                                // if ((realTimeQuoteData.kLineData.closePrice > 1.5f ? (realTimeQuoteData.riseSpeed > 1.5f) : (realTimeQuoteData.riseSpeed > 2.0f)))
+                                if (realTimeQuoteData.riseSpeed > 1.5f)
                                 {
-                                    if(stockData.moneyRank < 0.5f)
+                                    if(stockData.moneyRank < 1.5f)
                                     {
                                         int ms = DateTime.Now.Millisecond;
                                         if (ms - stockData.lastUnusualTimestamp > 300 * 1000 || stockData.lastUnusualTimestamp <= 0)
@@ -203,17 +206,18 @@ public class HKChaseRiseWindow:Widget
         m_imageUpdateTimeCounter += ImGui.GetIO().DeltaTime;
 
         bool needRefreshImage = false;
-        if(m_imageUpdateTimeCounter >= 0.1f)
+        if(m_imageUpdateTimeCounter >= 5f)
         {
             needRefreshImage = true;
             m_imageUpdateTimeCounter = 0.0f;
         }
 
-        if (ImGui.BeginTable("HKChaseRiseTotalView", 3))
+        if (ImGui.BeginTable("HKChaseRiseTotalView", 4))
         {
-            ImGui.TableSetupColumn("股票名称", ImGuiTableColumnFlags.WidthStretch);
-            ImGui.TableSetupColumn("分时/K线图",ImGuiTableColumnFlags.WidthFixed,400);
-            ImGui.TableSetupColumn("操作按钮",ImGuiTableColumnFlags.WidthFixed,400);
+            ImGui.TableSetupColumn("股票名称", ImGuiTableColumnFlags.WidthFixed,200);
+            ImGui.TableSetupColumn("分时",ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("K线",ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("操作按钮",ImGuiTableColumnFlags.WidthFixed,100);
             ImGui.TableHeadersRow();
             
             for(int i = 0; i < m_displayingStockData.Count;i++) 
@@ -236,36 +240,36 @@ public class HKChaseRiseWindow:Widget
                 ImGui.TableNextColumn();
 
                 // 分时图
-                if (quoteData.displayingToday)
+                // if (quoteData.displayingToday)
                 {
                     if (quoteData.todayImageTextureId <= 0)
                     {
-                        if(quoteData.loadImageTask == null)
+                        if(quoteData.loadTodayImageTask == null)
                         {
-                            quoteData.loadImageTask = httpClient.GetByteArrayAsync($"https://webquotepic.eastmoney.com/GetPic.aspx?nid=116.{quoteData.quoteData.code}&imageType=TADR&token=e424fa7066ff5fe74ceb9708dd59cfc2&v=1711555522790");
+                            quoteData.loadTodayImageTask = httpClient.GetByteArrayAsync($"https://webquotepic.eastmoney.com/GetPic.aspx?nid=116.{quoteData.quoteData.code}&imageType=TADR&token=e424fa7066ff5fe74ceb9708dd59cfc2&v=1711555522790");
                         }
-                        else if (quoteData.loadImageTask.IsCompleted)
+                        else if (quoteData.loadTodayImageTask.IsCompleted)
                         {
-                            quoteData.todayImageTextureId = Resources.LoadTextureFromBytes(quoteData.loadImageTask.Result);
-                            quoteData.loadImageTask = null;
+                            quoteData.todayImageTextureId = Resources.LoadTextureFromBytes(quoteData.loadTodayImageTask.Result);
+                            quoteData.loadTodayImageTask = null;
                         }
                     }
                     else if(quoteData.isReloadToday)
                     {
-                        if (quoteData.loadImageTask.IsCompleted)
+                        if (quoteData.loadTodayImageTask.IsCompleted)
                         {
                             // 先释放旧的
                             Resources.FreeTexture(quoteData.todayImageTextureId);
 
                             // 加载新的
-                            quoteData.todayImageTextureId = Resources.LoadTextureFromBytes(quoteData.loadImageTask.Result);
+                            quoteData.todayImageTextureId = Resources.LoadTextureFromBytes(quoteData.loadTodayImageTask.Result);
 
                             // 移除掉任务
-                            quoteData.loadImageTask = null;
+                            quoteData.loadTodayImageTask = null;
                             quoteData.isReloadToday = false;
                         }
 
-                        ImGui.Image((IntPtr)quoteData.todayImageTextureId, new System.Numerics.Vector2(380, 250));
+                        ImGui.Image((IntPtr)quoteData.todayImageTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
                     }
                     else
                     {
@@ -273,28 +277,53 @@ public class HKChaseRiseWindow:Widget
                         if(needRefreshImage)
                         {
                             quoteData.isReloadToday = true;
-                            quoteData.loadImageTask = httpClient.GetByteArrayAsync($"https://webquotepic.eastmoney.com/GetPic.aspx?nid=116.{quoteData.quoteData.code}&imageType=TADR&token=e424fa7066ff5fe74ceb9708dd59cfc2&v=1711555522790");
+                            quoteData.loadTodayImageTask = httpClient.GetByteArrayAsync($"https://webquotepic.eastmoney.com/GetPic.aspx?nid=116.{quoteData.quoteData.code}&imageType=TADR&token=e424fa7066ff5fe74ceb9708dd59cfc2&v=1711555522790");
                         }
-                        ImGui.Image((IntPtr)quoteData.todayImageTextureId, new System.Numerics.Vector2(380, 250));
+                        ImGui.Image((IntPtr)quoteData.todayImageTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
                     }
                 }
-                else
+                ImGui.TableNextColumn();
+
+                // else
                 {
                     if (quoteData.klineTextureId <= 0)
                     {
-                        if (quoteData.loadImageTask == null)
+                        if (quoteData.loadkLineImageTask == null)
                         {
-                            quoteData.loadImageTask = httpClient.GetByteArrayAsync($"https://webquoteklinepic.eastmoney.com/GetPic.aspx?nid={quoteData.quoteData.code}&imageType=TADK&token=e424fa7066ff5fe74ceb9708dd59cfc2&unitwidth=30&v=1711556663209");
+                            quoteData.loadkLineImageTask = httpClient.GetByteArrayAsync($"https://webquoteklinepic.eastmoney.com/GetPic.aspx?nid=116.{quoteData.quoteData.code}&imageType=TADK&token=e424fa7066ff5fe74ceb9708dd59cfc2&unitwidth=30");
                         }
-                        else if (quoteData.loadImageTask.IsCompleted)
+                        else if (quoteData.loadkLineImageTask.IsCompleted)
                         {
-                            quoteData.klineTextureId = Resources.LoadTextureFromBytes(quoteData.loadImageTask.Result);
-                            quoteData.loadImageTask = null;
+                            quoteData.klineTextureId = Resources.LoadTextureFromBytes(quoteData.loadkLineImageTask.Result);
+                            quoteData.loadkLineImageTask = null;
                         }
+                    }
+                    else if (quoteData.isReloadKline)
+                    {
+                        if (quoteData.loadkLineImageTask.IsCompleted)
+                        {
+                            // 先释放旧的
+                            Resources.FreeTexture(quoteData.klineTextureId);
+
+                            // 加载新的
+                            quoteData.klineTextureId = Resources.LoadTextureFromBytes(quoteData.loadkLineImageTask.Result);
+
+                            // 移除掉任务
+                            quoteData.loadkLineImageTask = null;
+                            quoteData.isReloadKline = false;
+                        }
+
+                        ImGui.Image((IntPtr)quoteData.todayImageTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
                     }
                     else
                     {
-                        ImGui.Image((IntPtr)quoteData.todayImageTextureId, new System.Numerics.Vector2(380, 250));
+                        // 新开一个 异步加载 任务
+                        if (needRefreshImage)
+                        {
+                            quoteData.isReloadKline = true;
+                            quoteData.loadkLineImageTask = httpClient.GetByteArrayAsync($"https://webquoteklinepic.eastmoney.com/GetPic.aspx?nid=116.{quoteData.quoteData.code}&imageType=TADK&token=e424fa7066ff5fe74ceb9708dd59cfc2&unitwidth=30");
+                        }
+                        ImGui.Image((IntPtr)quoteData.klineTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
                     }
                 }
 
@@ -303,7 +332,14 @@ public class HKChaseRiseWindow:Widget
                 ImGui.PushID($"HKChaseRiseTotalViewBuyBtn{i}");
                 if (ImGui.Button("跟进"))
                 {
-                    WidgetManagement.GetWidget<HKChaseRiseBuyWindow>().SetStockQuoteData(quoteData);
+                    if(EastMoneyTradeManager.Instance.isLoggedIn)
+                    {
+                        EastMoneyTradeManager.Instance.ExecuteBuyByRatio(quoteData.quoteData.code, 1);
+                    }
+                    else
+                    {
+                        WidgetManagement.GetWidget<MessageBox>().SetContent("跟进股票", "你都没有登录，跟进个锤子哦");
+                    }
                 }
                 ImGui.PopID();
 
@@ -334,7 +370,6 @@ public class HKChaseRiseBuyWindow : Widget
             ImGui.Text("啥数据都没有，怎么追涨?");
             return;
         }
-
     }
 
     public void SetStockQuoteData(HKChaseRiseQuoteData quoteData)

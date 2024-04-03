@@ -47,3 +47,10 @@ public class EastMoneyRevokeInfo
 {
 
 }
+
+
+// 成交的信息
+public class EastMoneyDealInfo
+{
+
+}

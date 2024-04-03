@@ -155,6 +155,9 @@ public class EastMoneyTradeManager:Singleton<EastMoneyTradeManager>
         // 构造定时器
         Instance.m_positionUpdateTimer = CallTimer.Instance.SetInterval(() =>
         {
+            // 暂时不处理
+            if (true) return;
+
             Instance.m_browser.SwitchToUrl(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Position]);
 
             var positionInfo = new EastMoneyPositionInfo();
@@ -178,6 +181,9 @@ public class EastMoneyTradeManager:Singleton<EastMoneyTradeManager>
             {
                 // 对于每一行，获取所有的列元素
                 IList<IWebElement> rowTds = row.FindElements(By.TagName("td"));
+
+                if(Convert.ToInt32(rowTds[2].Text) <= 0)
+                    continue;
 
                 positionInfo.stockInfos.Add(new EastMoneyPositionStockInfo()
                 {
@@ -288,6 +294,9 @@ public class EastMoneyTradeManager:Singleton<EastMoneyTradeManager>
 
     public void ExecuteBuyByRatio(string code,int ratio)
     {
+        var mode = (EastMoneyTradeMode)EastMoneyTradeModeSetting.Instance.activeMode;
+        Instance.m_browser.SwitchToUrl(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Buy]);
+
         By by1 = By.CssSelector($"[id*='{code}']");
         By by2 = By.Id("btnConfirm");
 
