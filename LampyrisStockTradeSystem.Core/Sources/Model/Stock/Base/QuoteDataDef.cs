@@ -457,7 +457,7 @@ public class StockRealTimeQuoteData : RealTimeQuoteData
     /// <summary>
     /// 涨速
     /// </summary>
-    public float riseSpped;
+    public float riseSpeed;
 
     /// <summary>
     /// 买入价

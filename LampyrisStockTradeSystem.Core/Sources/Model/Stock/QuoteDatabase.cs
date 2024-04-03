@@ -492,7 +492,7 @@ public class QuoteDatabase : SerializableSingleton<QuoteDatabase>, IPostSerializ
                                 realTimeQuoteData.kLineData.highestPrice = stockObject["f15"].SafeToObject<float>(); // 最高
                                 realTimeQuoteData.kLineData.lowestPrice = stockObject["f16"].SafeToObject<float>(); // 最低
                                 realTimeQuoteData.kLineData.openPrice = stockObject["f17"].SafeToObject<float>(); // 今开
-                                realTimeQuoteData.riseSpped = stockObject["f22"].SafeToObject<float>(); // 涨速
+                                realTimeQuoteData.riseSpeed = stockObject["f22"].SafeToObject<float>(); // 涨速
                                 realTimeQuoteData.bidAskData.theCommittee = stockObject["f31"].SafeToObject<float>(); // 买一价,可能是"-"
                                 realTimeQuoteData.buyPrice = stockObject["f32"].SafeToObject<float>(); // 卖一价,可能是"-"
                                 realTimeQuoteData.sellPrice = stockObject["f33"].SafeToObject<float>(); // 委比
