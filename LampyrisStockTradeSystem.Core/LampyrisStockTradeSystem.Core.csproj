@@ -39,8 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Sources\UI\Custom\HKChaseRise\Model\" />
-    <Folder Include="Sources\UI\Custom\HKChaseRise\Manager\" />
+    <Folder Include="Sources\UI\Custom\HKLink\Manager\" />
   </ItemGroup>
 
 </Project>

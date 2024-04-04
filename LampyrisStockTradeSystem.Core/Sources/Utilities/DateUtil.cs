@@ -20,4 +20,12 @@ public static class DateUtil
     {
         return DateTime.TryParseExact(dateString, "HH:mm", null, System.Globalization.DateTimeStyles.None, out validTime);
     }
+
+    public static DateTime GetDateMinusDays(int days)
+    { 
+        DateTime today = DateTime.Now;
+        DateTime resultDate = today.AddDays(-days);
+
+        return resultDate;
+    }
 }

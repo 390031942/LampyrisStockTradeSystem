@@ -38,16 +38,19 @@ public class CallTimer:Singleton<CallTimer>
         if (action == null)
             return -1;
 
-        int id = m_increaseKey++;
-        m_id2DelayHandlerDict[id] = new DelayHandler()
+        lock (m_id2DelayHandlerDict)
         {
-            type = DelayHandlerType.Interval,
-            action = action,
-            delayMs = delayMs,
-            repeatTime = repeatTime,
-        };
+            int id = m_increaseKey++;
+            m_id2DelayHandlerDict[id] = new DelayHandler()
+            {
+                type = DelayHandlerType.Interval,
+                action = action,
+                delayMs = delayMs,
+                repeatTime = repeatTime,
+            };
 
-        return id;
+            return id;
+        }
     }
 
     public int SetFrameLoop(Action action,int delayFrame,int repeatTime = -1)
@@ -55,69 +58,78 @@ public class CallTimer:Singleton<CallTimer>
         if (action == null)
             return -1;
 
-        int id = m_increaseKey++;
-        m_id2DelayHandlerDict[id] = new DelayHandler()
+        lock (m_id2DelayHandlerDict)
         {
-            type = DelayHandlerType.FrameLoop,
-            action = action,
-            delayFrame = delayFrame,
-            repeatTime = repeatTime,
-        };
+            int id = m_increaseKey++;
+            m_id2DelayHandlerDict[id] = new DelayHandler()
+            {
+                type = DelayHandlerType.FrameLoop,
+                action = action,
+                delayFrame = delayFrame,
+                repeatTime = repeatTime,
+            };
 
-        return id;
+            return id;
+        }
     }
 
     public void ClearTimer(int id)
     {
-        if (m_id2DelayHandlerDict.ContainsKey(id))
+        lock (m_id2DelayHandlerDict)
         {
-            m_id2DelayHandlerDict.Remove(id);
+            if (m_id2DelayHandlerDict.ContainsKey(id))
+            {
+                m_id2DelayHandlerDict.Remove(id);
+            }
         }
     }
 
     public void Update()
     {
-        foreach(var pair in m_id2DelayHandlerDict)
+        lock (m_id2DelayHandlerDict)
         {
-            bool shouldDoAction = false;
-            DelayHandler delayHandler = pair.Value;
+            foreach (var pair in m_id2DelayHandlerDict)
+            {
+                bool shouldDoAction = false;
+                DelayHandler delayHandler = pair.Value;
 
-            if (delayHandler.type == DelayHandlerType.Interval)
-            {
-                delayHandler.totalTime += ImGui.GetIO().DeltaTime * 1000; // 转化为毫秒
-                if(delayHandler.totalTime >= delayHandler.delayMs)
+                if (delayHandler.type == DelayHandlerType.Interval)
                 {
-                    shouldDoAction = true;
-                    delayHandler.totalTime = 0.0f;
-                }
-            }
-            else
-            {
-                delayHandler.totalFrame += 1;
-                if(delayHandler.totalFrame >= delayHandler.delayFrame)
-                {
-                    shouldDoAction = true;
-                    delayHandler.totalFrame = 0;
-                }
-            }
-
-            if(shouldDoAction)
-            {
-                delayHandler.action();
-                if(delayHandler.repeatTime != -1)
-                {
-                    if(--delayHandler.repeatTime <= 0)
+                    delayHandler.totalTime += ImGui.GetIO().DeltaTime * 1000; // 转化为毫秒
+                    if (delayHandler.totalTime >= delayHandler.delayMs)
                     {
-                        m_shouldRemoveIDList.Add(pair.Key);
+                        shouldDoAction = true;
+                        delayHandler.totalTime = 0.0f;
+                    }
+                }
+                else
+                {
+                    delayHandler.totalFrame += 1;
+                    if (delayHandler.totalFrame >= delayHandler.delayFrame)
+                    {
+                        shouldDoAction = true;
+                        delayHandler.totalFrame = 0;
+                    }
+                }
+
+                if (shouldDoAction)
+                {
+                    delayHandler.action();
+                    if (delayHandler.repeatTime != -1)
+                    {
+                        if (--delayHandler.repeatTime <= 0)
+                        {
+                            m_shouldRemoveIDList.Add(pair.Key);
+                        }
                     }
                 }
             }
-        }
 
-        foreach(int id in m_shouldRemoveIDList)
-        {
-            ClearTimer(id);
+            foreach (int id in m_shouldRemoveIDList)
+            {
+                ClearTimer(id);
+            }
+            m_shouldRemoveIDList.Clear();
         }
-        m_shouldRemoveIDList.Clear();
     }
 }

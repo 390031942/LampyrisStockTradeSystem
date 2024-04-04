@@ -11,9 +11,19 @@ public class UrlUtil
         if (string.IsNullOrEmpty(stockCode))
             return String.Empty;
 
-        if (stockCode.StartsWith("60"))
-            return "1." + stockCode;
-        else
-            return "0." + stockCode;
+        // 港股代码长度为5
+        if(stockCode.Length == 5)
+        {
+            return "116" + stockCode;
+        }
+        else if(stockCode.Length == 6)
+        {
+            if (stockCode.StartsWith("60"))
+                return "1." + stockCode;
+            else
+                return "0." + stockCode;
+        }
+
+        return "";
     }
 }

@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿/*
+** Author: wushuhong
+** Contact: gameta@qq.com
+** Description: 应用程序颜色信息
+*/
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace LampyrisStockTradeSystem;
 

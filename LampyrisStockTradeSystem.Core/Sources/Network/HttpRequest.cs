@@ -46,7 +46,6 @@ namespace LampyrisStockTradeSystemInternal
                     callback(rawJsonString);
                 }
             }
-            HttpRequest.Recycle(this);
         }
     }
 }
@@ -63,14 +62,17 @@ namespace LampyrisStockTradeSystem
 
         public static void Get(string url, Action<string> callback)
         {
-            if(ms_httpRequestInternals.TryPop(out HttpRequestInternal httpRequest))
+            lock (ms_httpRequestInternals)
             {
-                httpRequest.Get(url, callback);
-            }
-            else
-            {
-                httpRequest = new HttpRequestInternal();
-                httpRequest.Get(url, callback);
+                if (ms_httpRequestInternals.TryPop(out HttpRequestInternal httpRequest))
+                {
+                    httpRequest.Get(url, callback);
+                }
+                else
+                {
+                    httpRequest = new HttpRequestInternal();
+                    httpRequest.Get(url, callback);
+                }
             }
         }
 
