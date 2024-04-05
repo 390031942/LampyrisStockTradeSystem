@@ -387,6 +387,9 @@ public class QuoteDatabase : SerializableSingleton<QuoteDatabase>, IPostSerializ
     // 股票代码->股票数据字典
     private Dictionary<string, StockQuoteData> m_stockCode2DataDict = new Dictionary<string, StockQuoteData>();
 
+    // 指数简明行情的数据字典
+    private Dictionary<string, IndexBriefQuoteData> m_code2BriefQuoteDataMap = new Dictionary<string, IndexBriefQuoteData>();
+
     private List<SerializableKeyValuePair<string, StockQuoteData>> m_stockCode2DataList = new List<SerializableKeyValuePair<string, StockQuoteData>>();
 
     /// <summary>
@@ -659,6 +662,55 @@ public class QuoteDatabase : SerializableSingleton<QuoteDatabase>, IPostSerializ
     public QuoteData QueryQuoteData(string code)
     {
         return m_stockCode2DataDict[code];
+    }
+
+    [PlannedTask(PlannedTaskExecuteMode.ExecuteDuringTime, executeTime = "*", intervalMs = 1000)]
+    private static void RefreshIndexBriefQuoteData()
+    {
+        HttpRequest.GetSync(StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.GlobalIndexBrief), (json) =>
+        {
+            string strippedJson = JsonStripperUtil.GetEastMoneyStrippedJson(json);
+            JObject jsonRoot = JObject.Parse(strippedJson);
+            JArray indexDataArray = jsonRoot?["data"]?["diff"]?.ToObject<JArray>();
+            if (indexDataArray != null)
+            {
+                for (int i = 0; i < indexDataArray.Count; i++)
+                {
+                    JObject dataObject = indexDataArray[i].ToObject<JObject>();
+                    if (dataObject != null)
+                    {
+                        string code = dataObject["f12"].SafeToObject<string>();
+                        string name = dataObject["f14"].SafeToObject<string>();
+
+                        float currentPrice = dataObject["f2"].SafeToObject<float>();
+                        float percentage = dataObject["f3"].SafeToObject<float>();
+                        float priceChange = dataObject["f4"].SafeToObject<float>();
+
+                        IndexBriefQuoteData indexBriefQuoteData = null;
+                        if (!Instance.m_code2BriefQuoteDataMap.ContainsKey(code))
+                        {
+                            indexBriefQuoteData = Instance.m_code2BriefQuoteDataMap[code] = new IndexBriefQuoteData();
+                            indexBriefQuoteData.code = code;
+                            indexBriefQuoteData.name = name;
+                        }
+
+                        indexBriefQuoteData.currentPrice = currentPrice;
+                        indexBriefQuoteData.percentage = percentage;
+                        indexBriefQuoteData.priceChange = priceChange;
+                    }
+                }
+            }
+        });
+    }
+
+    public IndexBriefQuoteData QueryIndexBriefQuoteData(string code)
+    {
+        if(!m_code2BriefQuoteDataMap.ContainsKey(code))
+        {
+            return m_code2BriefQuoteDataMap[code];
+        }
+
+        return null;
     }
 
     public List<QuoteData> GetStockDataListConditional(Func<bool,QuoteData> filterFunc)

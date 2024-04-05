@@ -584,6 +584,7 @@ public class ImGuiController : IDisposable
 
         ImGuiViewportPtr viewport = ImGui.GetMainViewport();
         ImGui.SetNextWindowPos(viewport.WorkPos, ImGuiCond.Always);
+        viewport.WorkSize.Y -= 30f;
         ImGui.SetNextWindowSize(viewport.WorkSize);
 
         // window styling

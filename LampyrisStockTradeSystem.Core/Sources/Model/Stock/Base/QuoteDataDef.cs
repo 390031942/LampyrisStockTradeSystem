@@ -256,6 +256,28 @@ public class IndexQuoteData: QuoteData
 }
 
 /// <summary>
+/// 指数行情的简明数据，只包含三个行情指标，方便在状态栏等地方展示
+/// </summary>
+[Serializable]
+public class IndexBriefQuoteData
+{
+    // 指数代码
+    public string code;
+
+    // 指数名称
+    public string name;
+
+    // 指数现价
+    public float currentPrice;
+
+    // 指数涨跌额度
+    public float priceChange;
+
+    // 指数涨跌幅
+    public float percentage;
+}
+
+/// <summary>
 /// 股票数据 = 股票日K数据 + 基本面，TODO：以后会加入周线，分钟线等不同行情周期的数据
 /// </summary>
 [Serializable]

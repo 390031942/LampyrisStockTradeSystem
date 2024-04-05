@@ -14,6 +14,7 @@ public enum StockQuoteInterfaceType
     IntradayTradingDetail = 2, // 个股-分时成交明细
     CurrentQuotes = 3, // 全体-沪深京实时行情列表
     HKLink = 4, // 全体-港股通实时行情列表
+    GlobalIndexBrief = 5, // 全球主要的股市指数行情(简单版)
 }
 
 public abstract class IStockQuoteInterface

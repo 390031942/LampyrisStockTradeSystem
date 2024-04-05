@@ -65,8 +65,11 @@ public class HKLinkStockPortraitDataUpdateAsyncOperation : AsyncOperation
             string url = StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.KLineData, UrlUtil.GetStockCodeParam(stockCode), m_dateTimeStartString, m_dateTimeEndString);
             m_httpRequestInternal.GetSync(url, (json) =>
             {
-                HKLinkStockPortrait hKLinkStockPortrait = new HKLinkStockPortrait();
-
+                HKLinkStockPortrait hKLinkStockPortrait = new HKLinkStockPortrait()
+                {
+                    maxPercentageRecentYear = -1000.0f,
+                    percentageScoreRecentYear = 0
+                };
                 string strippedJson = JsonStripperUtil.GetEastMoneyStrippedJson(json);
                 JObject jsonRoot = JObject.Parse(strippedJson);
                 JArray klinesArray = jsonRoot?["data"]?["klines"]?.ToObject<JArray>();
@@ -79,7 +82,12 @@ public class HKLinkStockPortraitDataUpdateAsyncOperation : AsyncOperation
                         string[] strings = klineJson.Split(',');
                         if (strings.Length > 0)
                         {
-                            float priceChange = Convert.ToSingle(strings[9]);
+                            float percentage = Convert.ToSingle(strings[8]);
+                            if (hKLinkStockPortrait.maxPercentageRecentYear < percentage)
+                            {
+                                hKLinkStockPortrait.maxPercentageRecentYear = percentage;
+                            }
+
 
                         }
                     }

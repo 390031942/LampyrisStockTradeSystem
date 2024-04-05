@@ -252,5 +252,7 @@ public static class WidgetManagement
             m_type2WidgetListDict[widget.GetType()].Add(widget);
         }
         m_needAddWidgetList.Clear();
+
+        StatusBar.Instance.OnStatusBarGUI();
     }
 }

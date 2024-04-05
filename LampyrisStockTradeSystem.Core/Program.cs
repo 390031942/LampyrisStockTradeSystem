@@ -27,7 +27,6 @@ class Program
             RuntimeContext.mainWindow = new ProgramWindow();
             RuntimeContext.mainWindowPtr = FindWindow("GLFW30", "OpenTK Window");
             RuntimeContext.mainWindow.Run();
-
         }
         catch (Exception ex)
         {

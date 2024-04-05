@@ -14,6 +14,7 @@ public class StockQuoteInterface:Singleton<StockQuoteInterface>
             m_stockInterfaceDict[StockQuoteInterfaceType.IntradayTradingDetail] = new IntradayTradingDetailExtractor();
             m_stockInterfaceDict[StockQuoteInterfaceType.CurrentQuotes] = new CurrentRealtimeQuoteExtractor();
             m_stockInterfaceDict[StockQuoteInterfaceType.HKLink] = new HKLinkQuoteExtractor();
+            m_stockInterfaceDict[StockQuoteInterfaceType.GlobalIndexBrief] = new GlobalIndexBriefQuoteExtractor();
 
             m_inited = true;
         }

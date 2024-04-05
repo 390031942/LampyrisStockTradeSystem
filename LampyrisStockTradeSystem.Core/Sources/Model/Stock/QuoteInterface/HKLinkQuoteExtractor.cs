@@ -4,7 +4,6 @@ public class HKLinkQuoteExtractor : IStockQuoteInterface
 {
     public override StockQuoteInterfaceType quetoType => StockQuoteInterfaceType.HKLink;
 
-    protected string url1 => "http://45.push2.eastmoney.com/api/qt/clist/get";
     protected override string url => "http://45.push2.eastmoney.com/api/qt/clist/get";
     protected override Dictionary<string, string> parameters => new Dictionary<string, string>()
     {
