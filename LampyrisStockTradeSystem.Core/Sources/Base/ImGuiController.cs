@@ -100,8 +100,9 @@ public class ImGuiController : IDisposable
 
         /* begin of 设置全局字体 */
         ImFontAtlasPtr fontAtlas = ImGui.GetIO().Fonts;
-        string fontPath = Path.Combine("C:\\Windows\\Fonts", "msyh.ttc");
-        ImFontPtr font = fontAtlas.AddFontFromFileTTF("C:\\Windows\\Fonts\\msyh.ttc", 18, null,fontAtlas.GetGlyphRangesChineseFull());
+        string fontPath = Path.Combine("C:\\Windows\\Fonts", "Arial.ttc");
+        ImVector fontGlyphRanges = BuildFontGlyphRange();
+        ImFontPtr font = fontAtlas.AddFontFromFileTTF("C:\\Windows\\Fonts\\msyh.ttc", 18, null, fontGlyphRanges.Data);
         /* end of 设置全局字体 */
 
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable; // Enable Docking
@@ -114,6 +115,31 @@ public class ImGuiController : IDisposable
 
         ImGui.NewFrame();
         _frameBegun = true;
+    }
+
+    private unsafe ImVector BuildFontGlyphRange()
+    {
+        // 获取默认的字形范围（例如全中文范围）
+        IntPtr chineseRange = ImGui.GetIO().Fonts.GetGlyphRangesChineseFull();
+
+        // 创建一个字形范围构建器
+        ImFontGlyphRangesBuilderPtr builder = new ImFontGlyphRangesBuilderPtr(ImGuiNative.ImFontGlyphRangesBuilder_ImFontGlyphRangesBuilder());
+
+        // 添加默认的范围
+        builder.AddRanges(chineseRange); // 这里使用了ImFontGlyphRangesBuilderPtr的AddRanges
+
+        // 添加特殊字符的Unicode码点
+        // 例如，下面添加了一些常见的特殊字符，你可以根据需要添加更多
+        builder.AddChar('%'); 
+        builder.AddChar('↑');
+        builder.AddChar('↓'); 
+
+        // 根据需要继续添加其他特殊字符
+
+        // 构建字形范围
+        builder.BuildRanges(out ImVector ranges);
+
+        return ranges;
     }
 
     public void WindowResized(int width, int height)

@@ -693,7 +693,10 @@ public class QuoteDatabase : SerializableSingleton<QuoteDatabase>, IPostSerializ
                             indexBriefQuoteData.code = code;
                             indexBriefQuoteData.name = name;
                         }
-
+                        else
+                        {
+                            indexBriefQuoteData = Instance.m_code2BriefQuoteDataMap[code];
+                        }
                         indexBriefQuoteData.currentPrice = currentPrice;
                         indexBriefQuoteData.percentage = percentage;
                         indexBriefQuoteData.priceChange = priceChange;
@@ -705,7 +708,7 @@ public class QuoteDatabase : SerializableSingleton<QuoteDatabase>, IPostSerializ
 
     public IndexBriefQuoteData QueryIndexBriefQuoteData(string code)
     {
-        if(!m_code2BriefQuoteDataMap.ContainsKey(code))
+        if (m_code2BriefQuoteDataMap.ContainsKey(code))
         {
             return m_code2BriefQuoteDataMap[code];
         }

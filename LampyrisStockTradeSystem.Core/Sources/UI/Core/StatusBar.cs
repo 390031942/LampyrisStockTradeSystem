@@ -11,6 +11,15 @@ public class StatusBar:Singleton<StatusBar>
 {
     public ImGuiWindowFlags windowFlags => ImGuiWindowFlags.NoFocusOnAppearing|ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar;
 
+    // 需要展示在状态栏的指数
+    private List<string> m_indexBriefCodeList = new List<string>()
+    {
+        "000001",// 上证指数
+        "399001",// 深证成指
+        "HSI", // 恒生指数
+        "NDX", // 纳斯达克
+    };
+
     public void OnStatusBarGUI()
     {
         float windowWidth = ImGui.GetIO().DisplaySize.X;
@@ -21,39 +30,39 @@ public class StatusBar:Singleton<StatusBar>
 
         ImGui.Begin("StatusBar", windowFlags);
         {
-            ImGui.Text("上证指数");
-            ImGui.SameLine();
-            ImGui.Text("3069.30");
-            ImGui.SameLine();
-            ImGui.Text("-5.66");
-            ImGui.SameLine();
-            ImGui.Text("-0.18%");
-            ImGui.SameLine();
-            ImGui.Text("3927.0亿");
-            ImGui.SameLine();
+            foreach(string code in m_indexBriefCodeList)
+            {
+                var data = QuoteDatabase.Instance.QueryIndexBriefQuoteData(code);
+                if (data != null)
+                {
+                    ImGui.Text(data.name);
+                    ImGui.SameLine();
 
-            ImGui.Text("深证成指");
-            ImGui.SameLine();
-            ImGui.Text("9544.77");
-            ImGui.SameLine();
-            ImGui.Text("-42.18");
-            ImGui.SameLine();
-            ImGui.Text("-0.44%");
-            ImGui.SameLine();
-            ImGui.Text("5252.4亿");
-            ImGui.SameLine();
+                    ImGui.PushStyleColor(ImGuiCol.Text,AppUIStyle.Instance.GetRiseFallColor(data.percentage));
 
-            ImGui.Text("恒生指数");
-            ImGui.SameLine();
-            ImGui.Text("16725.10");
-            ImGui.SameLine();
-            ImGui.Text("-206.42");
-            ImGui.SameLine();
-            ImGui.Text("-1.22%");
-            ImGui.SameLine();
-            ImGui.Text("997.87亿");
+                    string priceSign = "";
+                    string percentageSign = "";
+                    if (data.percentage > 0)
+                    {
+                        priceSign = "↑ ";
+                        percentageSign = "+";
+                    }
+                    else if (data.percentage < 0)
+                    {
+                        priceSign = "↓ ";
+                    }
 
-            ImGui.SameLine();
+                    ImGui.Text(data.currentPrice.ToString());
+                    ImGui.SameLine();
+                    ImGui.Text(priceSign + data.priceChange.ToString());
+                    ImGui.SameLine();
+                    ImGui.Text(percentageSign + data.percentage.ToString() + "%%");
+                    ImGui.SameLine();
+
+                    ImGui.PopStyleColor();
+                }
+            }
+
             // 显示系统时间
             ImGui.SameLine(ImGui.GetIO().DisplaySize.X - 100); // 根据需要调整位置
             ImGui.Text(DateTime.Now.ToString("HH:mm:ss"));

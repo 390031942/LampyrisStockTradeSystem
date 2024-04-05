@@ -24,4 +24,24 @@ public class AppUIStyle:SerializableSingleton<AppUIStyle>
 
     // 行情 金额 颜色
     public Vector4 quoteMoneyColor = new Vector4(0.0f, 1.0f, 1.0f, 1.0f);
+
+    // 普通的白色
+    public Vector4 normalWhiteColor = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+
+    // 涨跌颜色反转
+    public bool reverseRiseFallColor = false;
+
+    public Vector4 GetRiseFallColor(float percentage)
+    {
+        if(percentage > 0.0f)
+        {
+            return !reverseRiseFallColor ? quoteRiseColor : quoteFallColor;
+        }
+        else if(percentage < 0.0f)
+        {
+            return reverseRiseFallColor ? quoteRiseColor : quoteFallColor;
+        }
+
+        return normalWhiteColor;
+    }
 }

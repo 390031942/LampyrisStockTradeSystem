@@ -87,6 +87,8 @@ public class PlannedTaskExecutor : ILifecycle
         public Action action;
 
         public float timeAccumulateMs;
+
+        public bool isAlways;
     }
 
     private List<OnTimeTaskInfo> onTimeTaskInfoList = new List<OnTimeTaskInfo>();
@@ -171,18 +173,30 @@ public class PlannedTaskExecutor : ILifecycle
                         {
                             if (!string.IsNullOrEmpty(plannedTask.executeTime))
                             {
-                                string[] strs = plannedTask.executeTime.Split("-");
-                                if (strs.Length == 2)
+                                if(plannedTask.executeTime == "*")
                                 {
-                                    if (DateUtil.ParseDateString(strs[0], out var dateTimeBegin) &&
-                                        DateUtil.ParseDateString(strs[1], out var dateTimeEnd))
+                                    DuringTimeTaskInfo duringTimeTaskInfo = new DuringTimeTaskInfo();
+                                    duringTimeTaskInfo.action = action;
+                                    duringTimeTaskInfo.intervalMs = plannedTask.intervalMs;
+                                    duringTimeTaskInfo.isAlways = true;
+                                    duringTimeTaskInfoList.Add(duringTimeTaskInfo);
+                                }
+                                else
+                                {
+                                    string[] strs = plannedTask.executeTime.Split("-");
+                                    if (strs.Length == 2)
                                     {
-                                        DuringTimeTaskInfo duringTimeTaskInfo = new DuringTimeTaskInfo();
-                                        duringTimeTaskInfo.startTime = Time.FromDateTime(dateTimeBegin);
-                                        duringTimeTaskInfo.endTime = Time.FromDateTime(dateTimeEnd);
-                                        duringTimeTaskInfo.action = action;
-                                        duringTimeTaskInfo.intervalMs = plannedTask.intervalMs;
-                                        duringTimeTaskInfoList.Add(duringTimeTaskInfo);
+                                        if (DateUtil.ParseDateString(strs[0], out var dateTimeBegin) &&
+                                            DateUtil.ParseDateString(strs[1], out var dateTimeEnd))
+                                        {
+                                            DuringTimeTaskInfo duringTimeTaskInfo = new DuringTimeTaskInfo();
+                                            duringTimeTaskInfo.startTime = Time.FromDateTime(dateTimeBegin);
+                                            duringTimeTaskInfo.endTime = Time.FromDateTime(dateTimeEnd);
+                                            duringTimeTaskInfo.action = action;
+                                            duringTimeTaskInfo.intervalMs = plannedTask.intervalMs;
+                                            duringTimeTaskInfo.isAlways = false;
+                                            duringTimeTaskInfoList.Add(duringTimeTaskInfo);
+                                        }
                                     }
                                 }
                             }
@@ -221,7 +235,7 @@ public class PlannedTaskExecutor : ILifecycle
         // 处理duringTimeTaskInfoList
         foreach (DuringTimeTaskInfo duringTimeTaskInfo in duringTimeTaskInfoList)
         {
-            if(nowTime.Greater(duringTimeTaskInfo.startTime) && duringTimeTaskInfo.endTime.Greater(nowTime))
+            if(duringTimeTaskInfo.isAlways || (nowTime.Greater(duringTimeTaskInfo.startTime) && duringTimeTaskInfo.endTime.Greater(nowTime)))
             {
                 duringTimeTaskInfo.timeAccumulateMs += deltaTime * 1000;
                 if (duringTimeTaskInfo.timeAccumulateMs > duringTimeTaskInfo.intervalMs)

@@ -52,13 +52,13 @@ public class HKChaseRiseWindow:Widget
             string strippedJson = JsonStripperUtil.GetEastMoneyStrippedJson(json);
             try
             {
-                lock(m_code2stockData)
+                lock (m_code2stockData)
                 {
                     JObject jsonRoot = JObject.Parse(strippedJson);
 
                     JArray stockDataArray = jsonRoot?["data"]?["diff"]?.ToObject<JArray>();
                     if (stockDataArray != null)
-                    {     
+                    {
                         for (int i = 0; i < stockDataArray.Count; i++)
                         {
                             JObject stockObject = stockDataArray[i].ToObject<JObject>();
@@ -121,9 +121,9 @@ public class HKChaseRiseWindow:Widget
                             return (int)(b.quoteData.realTimeQuoteData.kLineData.money - a.quoteData.realTimeQuoteData.kLineData.money);
                         });
 
-                        for (int i = 0;i < m_hkStockList.Count;i++)
+                        for (int i = 0; i < m_hkStockList.Count; i++)
                         {
-                            m_hkStockList[i].moneyRank = Math.Round((double)i / m_hkStockList.Count,2);
+                            m_hkStockList[i].moneyRank = Math.Round((double)i / m_hkStockList.Count, 2);
 
                             // 对于不在全景图中的股票代码,执行选股逻辑
                             if (!m_stockCode2DisplayingDataIndex.ContainsKey(m_hkStockList[i].quoteData.code))
@@ -134,7 +134,7 @@ public class HKChaseRiseWindow:Widget
                                 // if ((realTimeQuoteData.kLineData.closePrice > 1.5f ? (realTimeQuoteData.riseSpeed > 1.5f) : (realTimeQuoteData.riseSpeed > 2.0f)))
                                 if (realTimeQuoteData.riseSpeed > 1.5f)
                                 {
-                                    if(stockData.moneyRank < 1.5f)
+                                    if (stockData.moneyRank < 1.5f)
                                     {
                                         int ms = DateTime.Now.Millisecond;
                                         if (ms - stockData.lastUnusualTimestamp > 300 * 1000 || stockData.lastUnusualTimestamp <= 0)
@@ -150,10 +150,7 @@ public class HKChaseRiseWindow:Widget
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                // WidgetManagement.GetWidget<MessageBox>().SetContent("StockQuoteInterfaceType.CurrentQuotes报错", ex.ToString());
-            }
+            catch (Exception) { }
         });
     }
 

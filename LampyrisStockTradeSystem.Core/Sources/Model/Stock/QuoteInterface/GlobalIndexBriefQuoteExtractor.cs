@@ -18,7 +18,7 @@ public class GlobalIndexBriefQuoteExtractor: IStockQuoteInterface
         { "ut", "b2884a393a59ad64002292a3e90d46a5" },
         { "wbp2u","2710255628112086|0|1|0|web" },
         { "fs","i:1.000001,i:0.399001,i:100.HSI,i:100.NDX"},
-        { "fields", "f2,f3,f4,f14" },
+        { "fields", "f2,f3,f4,f12,f14" },
         { "_","1711281402699"}
     };
 }
