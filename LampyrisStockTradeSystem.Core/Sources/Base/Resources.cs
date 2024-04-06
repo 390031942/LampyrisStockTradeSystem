@@ -118,4 +118,11 @@ public static class Resources
          Bitmap bitmap = (Bitmap)Bitmap.FromStream(new MemoryStream(bytes));
          return LoadTextureFromBitmap(bitmap);
     }
+
+    public static int LoadTextureFromBytes(byte[] bytes,Rectangle specificRect)
+    {
+        Bitmap bitmap = (Bitmap)Bitmap.FromStream(new MemoryStream(bytes));
+        bitmap = bitmap.Clone(specificRect, bitmap.PixelFormat);
+        return LoadTextureFromBitmap(bitmap);
+    }
 }

@@ -6,6 +6,7 @@
 
 using ImGuiNET;
 using Newtonsoft.Json.Linq;
+using System.Numerics;
 
 namespace LampyrisStockTradeSystem;
 
@@ -34,6 +35,13 @@ public class HKChaseRiseWindow:Widget
     private HttpClient httpClient = new HttpClient();
 
     private float m_imageUpdateTimeCounter = 0.0f;
+
+    // 仓位选择
+    private int m_tradeOrderRatio = 1;
+
+    // 异动筛选策略
+    private int m_unusualStrategy = 0;
+
     public override string Name => "港股通追涨全景图";
 
     [PlannedTask(executeMode = PlannedTaskExecuteMode.ExecuteOnLaunch)]
@@ -45,7 +53,7 @@ public class HKChaseRiseWindow:Widget
     /// <summary>
     /// 刷新港股通所有股票的行情
     /// </summary>
-    [PlannedTask(executeTime ="09:29-16:10",executeMode = PlannedTaskExecuteMode.ExecuteDuringTime,intervalMs = 100)]
+    [PlannedTask(executeTime ="09:29-16:10",executeMode = PlannedTaskExecuteMode.ExecuteDuringTime | PlannedTaskExecuteMode.ExecuteOnLaunch,intervalMs = 100)]
     public static void RefreshHKStockQuote()
     {
         HttpRequest.Get(StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.HKLink), (string json) => {
@@ -134,7 +142,7 @@ public class HKChaseRiseWindow:Widget
                                 // if ((realTimeQuoteData.kLineData.closePrice > 1.5f ? (realTimeQuoteData.riseSpeed > 1.5f) : (realTimeQuoteData.riseSpeed > 2.0f)))
                                 if (realTimeQuoteData.riseSpeed > 1.5f)
                                 {
-                                    if (stockData.moneyRank < 1.5f)
+                                    // if (stockData.moneyRank < 1.5f)
                                     {
                                         int ms = DateTime.Now.Millisecond;
                                         if (ms - stockData.lastUnusualTimestamp > 300 * 1000 || stockData.lastUnusualTimestamp <= 0)
@@ -175,147 +183,171 @@ public class HKChaseRiseWindow:Widget
             m_imageUpdateTimeCounter = 0.0f;
         }
 
-        if (ImGui.BeginTable("HKChaseRiseTotalView", 4))
+        // 计算窗口的内容区域大小
+        Vector2 contentSize = ImGui.GetWindowSize();
+
+        // 顶部面板，展示：策略筛选，购买策略等UI
+        ImGui.BeginChild("HKChaseRiseWindowTopPanel", new Vector2(contentSize.X, 30), true);
         {
-            ImGui.TableSetupColumn("股票名称", ImGuiTableColumnFlags.WidthFixed,200);
-            ImGui.TableSetupColumn("分时",ImGuiTableColumnFlags.WidthStretch);
-            ImGui.TableSetupColumn("K线",ImGuiTableColumnFlags.WidthStretch);
-            ImGui.TableSetupColumn("操作按钮",ImGuiTableColumnFlags.WidthFixed,100);
-            ImGui.TableHeadersRow();
-            
-            for(int i = 0; i < m_displayingStockData.Count;i++) 
+            // 跟进仓位
+            ImGui.Text("跟进仓位");
+            ImGui.SameLine();
+            for(int i = 1; i <= (int)TradeOrderRatio.Count; i++)
             {
-                HKChaseRiseQuoteData quoteData = m_displayingStockData[i];
-                ImGui.TableNextRow();
-
-                ImGui.TableNextColumn();
-
-                string displayInfo = quoteData.quoteData.code + " " +
-                                     quoteData.quoteData.name + "\n" +
-                                     "现价:" + quoteData.quoteData.realTimeQuoteData.kLineData.closePrice + "\n" +
-                                     "涨幅:" + quoteData.quoteData.realTimeQuoteData.kLineData.percentage + "\n" +
-                                     "涨速:" + ((StockRealTimeQuoteData)(quoteData.quoteData.realTimeQuoteData)).riseSpeed + "\n" +
-                                     "成交额:" + StringUtility.GetMoneyString(quoteData.quoteData.realTimeQuoteData.kLineData.money) + "\n" +
-                                     "成交额排位:" + quoteData.moneyRank;
-
-                ImGui.Text(displayInfo); // 显示股票名称
-
-                ImGui.TableNextColumn();
-
-                // 分时图
-                // if (quoteData.displayingToday)
+                if (ImGui.RadioButton(EastMoneyTradeModeName.Instance[(EastMoneyTradeMode)i], m_tradeOrderRatio == i))
                 {
-                    if (quoteData.todayImageTextureId <= 0)
-                    {
-                        if(quoteData.loadTodayImageTask == null)
-                        {
-                            quoteData.loadTodayImageTask = httpClient.GetByteArrayAsync($"https://webquotepic.eastmoney.com/GetPic.aspx?nid=116.{quoteData.quoteData.code}&imageType=TADR&token=e424fa7066ff5fe74ceb9708dd59cfc2&v=1711555522790");
-                        }
-                        else if (quoteData.loadTodayImageTask.IsCompleted)
-                        {
-                            quoteData.todayImageTextureId = Resources.LoadTextureFromBytes(quoteData.loadTodayImageTask.Result);
-                            quoteData.loadTodayImageTask = null;
-                        }
-                    }
-                    else if(quoteData.isReloadToday)
-                    {
-                        if (quoteData.loadTodayImageTask.IsCompleted)
-                        {
-                            // 先释放旧的
-                            Resources.FreeTexture(quoteData.todayImageTextureId);
 
-                            // 加载新的
-                            quoteData.todayImageTextureId = Resources.LoadTextureFromBytes(quoteData.loadTodayImageTask.Result);
-
-                            // 移除掉任务
-                            quoteData.loadTodayImageTask = null;
-                            quoteData.isReloadToday = false;
-                        }
-
-                        ImGui.Image((IntPtr)quoteData.todayImageTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
-                    }
-                    else
-                    {
-                        // 新开一个 异步加载 任务
-                        if(needRefreshImage)
-                        {
-                            quoteData.isReloadToday = true;
-                            quoteData.loadTodayImageTask = httpClient.GetByteArrayAsync($"https://webquotepic.eastmoney.com/GetPic.aspx?nid=116.{quoteData.quoteData.code}&imageType=TADR&token=e424fa7066ff5fe74ceb9708dd59cfc2&v=1711555522790");
-                        }
-                        ImGui.Image((IntPtr)quoteData.todayImageTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
-                    }
                 }
-                ImGui.TableNextColumn();
-
-                // else
-                {
-                    if (quoteData.klineTextureId <= 0)
-                    {
-                        if (quoteData.loadkLineImageTask == null)
-                        {
-                            quoteData.loadkLineImageTask = httpClient.GetByteArrayAsync($"https://webquoteklinepic.eastmoney.com/GetPic.aspx?nid=116.{quoteData.quoteData.code}&imageType=TADK&token=e424fa7066ff5fe74ceb9708dd59cfc2&unitwidth=30");
-                        }
-                        else if (quoteData.loadkLineImageTask.IsCompleted)
-                        {
-                            quoteData.klineTextureId = Resources.LoadTextureFromBytes(quoteData.loadkLineImageTask.Result);
-                            quoteData.loadkLineImageTask = null;
-                        }
-                    }
-                    else if (quoteData.isReloadKline)
-                    {
-                        if (quoteData.loadkLineImageTask.IsCompleted)
-                        {
-                            // 先释放旧的
-                            Resources.FreeTexture(quoteData.klineTextureId);
-
-                            // 加载新的
-                            quoteData.klineTextureId = Resources.LoadTextureFromBytes(quoteData.loadkLineImageTask.Result);
-
-                            // 移除掉任务
-                            quoteData.loadkLineImageTask = null;
-                            quoteData.isReloadKline = false;
-                        }
-
-                        ImGui.Image((IntPtr)quoteData.todayImageTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
-                    }
-                    else
-                    {
-                        // 新开一个 异步加载 任务
-                        if (needRefreshImage)
-                        {
-                            quoteData.isReloadKline = true;
-                            quoteData.loadkLineImageTask = httpClient.GetByteArrayAsync($"https://webquoteklinepic.eastmoney.com/GetPic.aspx?nid=116.{quoteData.quoteData.code}&imageType=TADK&token=e424fa7066ff5fe74ceb9708dd59cfc2&unitwidth=30");
-                        }
-                        ImGui.Image((IntPtr)quoteData.klineTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
-                    }
-                }
-
-                ImGui.TableNextColumn();
-
-                ImGui.PushID($"HKChaseRiseTotalViewBuyBtn{i}");
-                if (ImGui.Button("跟进"))
-                {
-                    if(EastMoneyTradeManager.Instance.isLoggedIn)
-                    {
-                        EastMoneyTradeManager.Instance.ExecuteBuyByRatio(quoteData.quoteData.code, 1);
-                    }
-                    else
-                    {
-                        WidgetManagement.GetWidget<MessageBox>().SetContent("跟进股票", "你都没有登录，跟进个锤子哦");
-                    }
-                }
-                ImGui.PopID();
-
-                ImGui.PushID($"HKChaseRiseTotalViewIgnoreBtn{i}");
-                if (ImGui.Button("忽略"))
-                {
-                    m_displayingStockData.Remove(quoteData);
-                }
-                ImGui.PopID();
             }
 
-            ImGui.EndTable();
         }
+        ImGui.EndChild();
+
+        ImGui.BeginChild("HKChaseRiseWindowBottomPanel", new Vector2(contentSize.X, contentSize.Y - 30), true);
+        {
+            if (ImGui.BeginTable("HKChaseRiseTotalView", 4))
+            {
+                ImGui.TableSetupColumn("股票名称", ImGuiTableColumnFlags.WidthFixed, 200);
+                ImGui.TableSetupColumn("分时", ImGuiTableColumnFlags.WidthStretch);
+                ImGui.TableSetupColumn("K线", ImGuiTableColumnFlags.WidthStretch);
+                ImGui.TableSetupColumn("操作按钮", ImGuiTableColumnFlags.WidthFixed, 100);
+                ImGui.TableHeadersRow();
+
+                for (int i = 0; i < m_displayingStockData.Count; i++)
+                {
+                    HKChaseRiseQuoteData quoteData = m_displayingStockData[i];
+                    ImGui.TableNextRow();
+
+                    ImGui.TableNextColumn();
+
+                    string displayInfo = quoteData.quoteData.code + " " +
+                                         quoteData.quoteData.name + "\n" +
+                                         "现价:" + quoteData.quoteData.realTimeQuoteData.kLineData.closePrice + "\n" +
+                                         "涨幅:" + quoteData.quoteData.realTimeQuoteData.kLineData.percentage + "%%\n" +
+                                         "涨速:" + ((StockRealTimeQuoteData)(quoteData.quoteData.realTimeQuoteData)).riseSpeed + "%%\n" +
+                                         "成交额:" + StringUtility.GetMoneyString(quoteData.quoteData.realTimeQuoteData.kLineData.money) + "\n" +
+                                         "成交额排位: 前" + (int)(100 * quoteData.moneyRank) + "%%";
+
+                    ImGui.Text(displayInfo); // 显示股票名称
+
+                    ImGui.TableNextColumn();
+
+                    // 分时图
+                    // if (quoteData.displayingToday)
+                    {
+                        if (quoteData.todayImageTextureId <= 0)
+                        {
+                            if (quoteData.loadTodayImageTask == null)
+                            {
+                                quoteData.loadTodayImageTask = httpClient.GetByteArrayAsync($"http://webquotepic.eastmoney.com/GetPic.aspx?imageType=r&nid=116.{quoteData.quoteData.code}&timespan=1712254059");
+                            }
+                            else if (quoteData.loadTodayImageTask.IsCompleted)
+                            {
+                                quoteData.todayImageTextureId = Resources.LoadTextureFromBytes(quoteData.loadTodayImageTask.Result);
+                                quoteData.loadTodayImageTask = null;
+                            }
+                        }
+                        else if (quoteData.isReloadToday)
+                        {
+                            if (quoteData.loadTodayImageTask.IsCompleted)
+                            {
+                                // 先释放旧的
+                                Resources.FreeTexture(quoteData.todayImageTextureId);
+
+                                // 加载新的
+                                quoteData.todayImageTextureId = Resources.LoadTextureFromBytes(quoteData.loadTodayImageTask.Result);
+
+                                // 移除掉任务
+                                quoteData.loadTodayImageTask = null;
+                                quoteData.isReloadToday = false;
+                            }
+
+                            ImGui.Image((IntPtr)quoteData.todayImageTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
+                        }
+                        else
+                        {
+                            // 新开一个 异步加载 任务
+                            if (needRefreshImage)
+                            {
+                                quoteData.isReloadToday = true;
+                                quoteData.loadTodayImageTask = httpClient.GetByteArrayAsync($"http://webquotepic.eastmoney.com/GetPic.aspx?imageType=r&nid=116.{quoteData.quoteData.code}&timespan=1712254059");
+                            }
+                            ImGui.Image((IntPtr)quoteData.todayImageTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
+                        }
+                    }
+                    ImGui.TableNextColumn();
+
+                    // else
+                    {
+                        if (quoteData.klineTextureId <= 0)
+                        {
+                            if (quoteData.loadkLineImageTask == null)
+                            {
+                                quoteData.loadkLineImageTask = httpClient.GetByteArrayAsync($"http://webquoteklinepic.eastmoney.com/GetPic.aspx?nid=116.{quoteData.quoteData.code}&type=&unitWidth=-5&ef=&formula=RSI&AT=1&imageType=KXL&timespan=1712334914");
+                            }
+                            else if (quoteData.loadkLineImageTask.IsCompleted)
+                            {
+                                quoteData.klineTextureId = Resources.LoadTextureFromBytes(quoteData.loadkLineImageTask.Result, new Rectangle(0, 0, 520, 285));
+                                quoteData.loadkLineImageTask = null;
+                            }
+                        }
+                        else if (quoteData.isReloadKline)
+                        {
+                            if (quoteData.loadkLineImageTask.IsCompleted)
+                            {
+                                // 先释放旧的
+                                Resources.FreeTexture(quoteData.klineTextureId);
+
+                                // 加载新的
+                                quoteData.klineTextureId = Resources.LoadTextureFromBytes(quoteData.loadkLineImageTask.Result, new Rectangle(0, 0, 520, 285));
+
+                                // 移除掉任务
+                                quoteData.loadkLineImageTask = null;
+                                quoteData.isReloadKline = false;
+                            }
+
+                            ImGui.Image((IntPtr)quoteData.klineTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
+                        }
+                        else
+                        {
+                            // 新开一个 异步加载 任务
+                            if (needRefreshImage)
+                            {
+                                quoteData.isReloadKline = true;
+                                quoteData.loadkLineImageTask = httpClient.GetByteArrayAsync($"http://webquoteklinepic.eastmoney.com/GetPic.aspx?nid=116.{quoteData.quoteData.code}&type=&unitWidth=-5&ef=&formula=RSI&AT=1&imageType=KXL&timespan=1712334914");
+                            }
+                            ImGui.Image((IntPtr)quoteData.klineTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
+                        }
+                    }
+
+                    ImGui.TableNextColumn();
+
+                    ImGui.PushID($"HKChaseRiseTotalViewBuyBtn{i}");
+                    if (ImGui.Button("跟进"))
+                    {
+                        if (EastMoneyTradeManager.Instance.isLoggedIn)
+                        {
+                            EastMoneyTradeManager.Instance.ExecuteBuyByRatio(quoteData.quoteData.code, 1);
+                        }
+                        else
+                        {
+                            WidgetManagement.GetWidget<MessageBox>().SetContent("跟进股票", "你都没有登录，跟进个锤子哦");
+                        }
+                    }
+                    ImGui.PopID();
+
+                    ImGui.PushID($"HKChaseRiseTotalViewIgnoreBtn{i}");
+                    if (ImGui.Button("忽略"))
+                    {
+                        m_displayingStockData.Remove(quoteData);
+                    }
+                    ImGui.PopID();
+                }
+
+                ImGui.EndTable();
+            }
+        }
+        ImGui.EndChild();
     }
 }
 

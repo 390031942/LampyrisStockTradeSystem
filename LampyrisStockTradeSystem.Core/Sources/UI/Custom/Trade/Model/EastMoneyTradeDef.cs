@@ -54,3 +54,14 @@ public class EastMoneyDealInfo
 {
 
 }
+
+// 仓位选择
+public enum TradeOrderRatio
+{
+    [MenuItem("")]
+    All = 1,
+    Half = 2,
+    Third = 3,
+    Qurater = 4,
+    Count = 4,
+}

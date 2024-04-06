@@ -47,9 +47,9 @@ public class HKChaseRiseTradeSubWindow : Widget
     {
         base.OnAfterGUI();
         if (ImGui.IsWindowCollapsed())
-            pos = new Vector2(0, ImGui.GetIO().DisplaySize.Y - 20);
+            pos = new Vector2(0, ImGui.GetIO().DisplaySize.Y - 50);
         else
-            pos = new Vector2(0, ImGui.GetIO().DisplaySize.Y - 200);
+            pos = new Vector2(0, ImGui.GetIO().DisplaySize.Y - 230);
     }
 
     public override void OnGUI()

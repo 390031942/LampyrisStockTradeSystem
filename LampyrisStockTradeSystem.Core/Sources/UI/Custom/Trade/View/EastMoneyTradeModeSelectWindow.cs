@@ -20,15 +20,22 @@ public class EastMoneyTradeModeSelectWindow:Widget
 
     public override WidgetModel widgetModel => WidgetModel.PopupModal;
 
+    private int m_tempIndex;
+
+    public override void OnAwake()
+    {
+        base.OnAwake();
+        m_tempIndex = EastMoneyTradeModeSetting.Instance.activeMode;
+    }
+
 
     public override void OnGUI()
     {
-        int activeIndex = 0;
         for(int i = 0; i < (int)EastMoneyTradeMode.Count; i++)
         {
-            if (ImGui.RadioButton(EastMoneyTradeModeName.Instance[(EastMoneyTradeMode)i],EastMoneyTradeModeSetting.Instance.activeMode == i))
+            if (ImGui.RadioButton(EastMoneyTradeModeName.Instance[(EastMoneyTradeMode)i],m_tempIndex == i))
             {
-                activeIndex = i;
+                m_tempIndex = i;
             }
             if ((i + 1) < (int)EastMoneyTradeMode.Count)
             {
@@ -38,7 +45,7 @@ public class EastMoneyTradeModeSelectWindow:Widget
 
         if(ImGui.Button("保存"))
         {
-            EastMoneyTradeModeSetting.Instance.activeMode = activeIndex;
+            EastMoneyTradeModeSetting.Instance.activeMode = m_tempIndex ;
             this.isOpened = false;
         }
 
@@ -53,6 +60,6 @@ public class EastMoneyTradeModeSelectWindow:Widget
     [MenuItem("交易/交易模式选择")]
     public static void SelectTradeMode()
     {
-        WidgetManagement.GetWidget<EastMoneyTradeModeSelectWindow>();
+         WidgetManagement.GetWidget<EastMoneyTradeModeSelectWindow>();
     }
 }
