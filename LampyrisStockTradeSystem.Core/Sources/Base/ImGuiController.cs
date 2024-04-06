@@ -133,6 +133,8 @@ public class ImGuiController : IDisposable
         builder.AddChar('%'); 
         builder.AddChar('↑');
         builder.AddChar('↓'); 
+        builder.AddChar('≥'); 
+        builder.AddChar('≤');
 
         // 根据需要继续添加其他特殊字符
 

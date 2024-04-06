@@ -58,10 +58,50 @@ public class EastMoneyDealInfo
 // 仓位选择
 public enum TradeOrderRatio
 {
-    [MenuItem("")]
+    [NamedValue("梭哈")]
     All = 1,
+
+    [NamedValue("1/2")]
     Half = 2,
+
+    [NamedValue("1/3")]
     Third = 3,
+
+    [NamedValue("1/4")]
     Qurater = 4,
+
     Count = 4,
+}
+
+// 委托剩余成交策略
+public enum TradeOrderLeftStrategy
+{
+    [NamedValue("即撤")]
+    Cancel = 1,
+
+    [NamedValue("循环")]
+    Circular = 2,
+
+    Count = 2,
+}
+
+// 买入卖出委托挡位选择
+public enum TradeAskBidLevel
+{
+    [NamedValue("一档")]
+    One = 1,
+
+    [NamedValue("二档")]
+    Two = 2,
+
+    [NamedValue("三档")]
+    Three = 3,
+
+    [NamedValue("四档")]
+    Four = 4,
+
+    [NamedValue("五档")]
+    Five = 5,
+
+    Count = 5,
 }

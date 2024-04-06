@@ -7,6 +7,7 @@
 using ImGuiNET;
 using Newtonsoft.Json.Linq;
 using System.Numerics;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace LampyrisStockTradeSystem;
 
@@ -39,8 +40,17 @@ public class HKChaseRiseWindow:Widget
     // 仓位选择
     private int m_tradeOrderRatio = 1;
 
+    // 成交剩余策略
+    private int m_tradeOrderLeftStrategy = 1;
+
     // 异动筛选策略
-    private int m_unusualStrategy = 0;
+    private int m_unusualStrategy = 1;
+
+    // 卖出档位
+    private int m_askLevel = 3;
+
+    // 买入档位
+    private int m_bidLevel = 3;
 
     public override string Name => "港股通追涨全景图";
 
@@ -53,7 +63,7 @@ public class HKChaseRiseWindow:Widget
     /// <summary>
     /// 刷新港股通所有股票的行情
     /// </summary>
-    [PlannedTask(executeTime ="09:29-16:10",executeMode = PlannedTaskExecuteMode.ExecuteDuringTime | PlannedTaskExecuteMode.ExecuteOnLaunch,intervalMs = 100)]
+    [PlannedTask(executeTime ="09:29-16:10",executeMode = PlannedTaskExecuteMode.ExecuteDuringTime | PlannedTaskExecuteMode.ExecuteOnLaunch,intervalMs = 1000)]
     public static void RefreshHKStockQuote()
     {
         HttpRequest.Get(StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.HKLink), (string json) => {
@@ -177,7 +187,7 @@ public class HKChaseRiseWindow:Widget
         m_imageUpdateTimeCounter += ImGui.GetIO().DeltaTime;
 
         bool needRefreshImage = false;
-        if(m_imageUpdateTimeCounter >= 5f)
+        if(m_imageUpdateTimeCounter >= 1f)
         {
             needRefreshImage = true;
             m_imageUpdateTimeCounter = 0.0f;
@@ -187,23 +197,110 @@ public class HKChaseRiseWindow:Widget
         Vector2 contentSize = ImGui.GetWindowSize();
 
         // 顶部面板，展示：策略筛选，购买策略等UI
-        ImGui.BeginChild("HKChaseRiseWindowTopPanel", new Vector2(contentSize.X, 30), true);
+        ImGui.BeginChild("##HKChaseRiseWindowTopPanel", new Vector2(contentSize.X, 40), true);
         {
             // 跟进仓位
+
             ImGui.Text("跟进仓位");
             ImGui.SameLine();
-            for(int i = 1; i <= (int)TradeOrderRatio.Count; i++)
+            for (int i = 1; i <= (int)TradeOrderRatio.Count; i++)
             {
-                if (ImGui.RadioButton(EastMoneyTradeModeName.Instance[(EastMoneyTradeMode)i], m_tradeOrderRatio == i))
+                if (ImGui.RadioButton(EnumNameManager.GetName((TradeOrderRatio)(i)), m_tradeOrderRatio == i))
                 {
-
+                    m_tradeOrderRatio = i;
                 }
+                ImGui.SameLine();
             }
 
+            ImGui.Text("成交剩余策略");
+            ImGui.SameLine();
+            for (int i = 1; i <= (int)TradeOrderLeftStrategy.Count; i++)
+            {
+                if (ImGui.RadioButton(EnumNameManager.GetName((TradeOrderLeftStrategy)(i)), m_tradeOrderLeftStrategy == i))
+                {
+                    m_tradeOrderLeftStrategy = i;
+                }
+                ImGui.SameLine();
+            }
+
+            // 筛选策略
+            // ImGui.Text()
+
+            // 买入申报
+            ImGui.SameLine();
+            ImGui.Text("买入申报");
+            ImGui.SameLine();
+
+            ImGui.SetNextItemWidth(100);
+
+            if (ImGui.BeginCombo("##HKCheaseRiseWindowBidCombo",EnumNameManager.GetName((TradeAskBidLevel)m_bidLevel)))
+            {
+                for (int i = 1; i <= (int)TradeAskBidLevel.Count; i++)
+                {
+                    bool isSelected = (m_bidLevel == i);
+                    string name = EnumNameManager.GetName((TradeAskBidLevel)i);
+                    if (ImGui.Selectable(name, isSelected))
+                    {
+                        m_bidLevel = i;
+                    }
+
+                }
+                ImGui.EndCombo();
+            }
+
+            ImGui.SameLine();
+            ImGui.Text("卖出申报");
+            ImGui.SameLine();
+
+            ImGui.SetNextItemWidth(100);
+
+            if (ImGui.BeginCombo("##HKCheaseRiseWindowAskCombo", EnumNameManager.GetName((TradeAskBidLevel)m_askLevel)))
+            {
+                for (int i = 1; i <= (int)TradeAskBidLevel.Count; i++)
+                {
+                    bool isSelected = (m_askLevel == i);
+                    if (ImGui.Selectable(EnumNameManager.GetName((TradeAskBidLevel)i), isSelected))
+                    {
+                        m_askLevel = i;
+                    }
+
+                    // 设置默认选中的项
+                    if (isSelected)
+                    {
+                        ImGui.SetItemDefaultFocus();
+                    }
+                }
+                ImGui.EndCombo();
+            }
+
+            ImGui.SameLine();
+            ImGui.Text("筛选策略");
+            ImGui.SameLine();
+
+            ImGui.SetNextItemWidth(450);
+
+            if (ImGui.BeginCombo("##HKCheaseRiseWindowUnusualStrategyh", EnumNameManager.GetName((HKStockUnusualStrategy)m_unusualStrategy)))
+            {
+                for (int i = 1; i <= (int)HKStockUnusualStrategy.Count; i++)
+                {
+                    bool isSelected = (m_unusualStrategy == i);
+                    if (ImGui.Selectable(EnumNameManager.GetName((HKStockUnusualStrategy)i), isSelected))
+                    {
+                        m_unusualStrategy = i;
+                    }
+
+                    // 设置默认选中的项
+                    if (isSelected)
+                    {
+                        ImGui.SetItemDefaultFocus();
+                    }
+                }
+                ImGui.EndCombo();
+            }
         }
         ImGui.EndChild();
 
-        ImGui.BeginChild("HKChaseRiseWindowBottomPanel", new Vector2(contentSize.X, contentSize.Y - 30), true);
+        ImGui.BeginChild("##HKChaseRiseWindowBottomPanel", new Vector2(contentSize.X, contentSize.Y - 40), true);
         {
             if (ImGui.BeginTable("HKChaseRiseTotalView", 4))
             {

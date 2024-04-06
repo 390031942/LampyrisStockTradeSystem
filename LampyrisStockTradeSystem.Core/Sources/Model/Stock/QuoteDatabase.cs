@@ -667,7 +667,7 @@ public class QuoteDatabase : SerializableSingleton<QuoteDatabase>, IPostSerializ
     [PlannedTask(PlannedTaskExecuteMode.ExecuteDuringTime, executeTime = "*", intervalMs = 1000)]
     private static void RefreshIndexBriefQuoteData()
     {
-        HttpRequest.GetSync(StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.GlobalIndexBrief), (json) =>
+        HttpRequest.Get(StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.GlobalIndexBrief), (json) =>
         {
             string strippedJson = JsonStripperUtil.GetEastMoneyStrippedJson(json);
             JObject jsonRoot = JObject.Parse(strippedJson);

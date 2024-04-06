@@ -36,3 +36,26 @@ public class HKChaseRiseQuoteData
 
     public int lastUnusualTimestamp = -1;
 }
+
+public enum HKStockUnusualStrategy
+{
+    [NamedValue("涨速≥1.5%(对于股价≤1.5元的涨速≥2%),且成交金额排位前50%")]
+    RiseSpeedNormal = 1,
+
+    [NamedValue("涨速≥5%(无视成交金额排位)")]
+    RiseSpeedEx = 2,
+
+    [NamedValue("跌速≥5%(无视成交金额排位)")]
+    FallSpeed = 3,
+
+    [NamedValue("日内分钟分时突破新高次数达到5的倍数(如5,10,15,20...)")]
+    Breakthrough = 4,
+
+    [NamedValue("涨幅≥10%")]
+    RisePercentage = 5,
+
+    [NamedValue("跌幅≥10%")]
+    FallPercentage = 6,
+
+    Count = 6,
+}

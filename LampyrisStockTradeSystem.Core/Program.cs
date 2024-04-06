@@ -4,11 +4,8 @@
 ** Description: LampyrisStockTradeSystem入口类
 */
 namespace LampyrisStockTradeSystem;
-
-using OpenTK.Windowing.GraphicsLibraryFramework;
 using System;
 using System.Runtime.InteropServices;
-using static LampyrisStockTradeSystem.IconFlashTips;
 
 class Program
 {
