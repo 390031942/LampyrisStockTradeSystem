@@ -122,10 +122,10 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
     public bool isLoggedIn => m_isLoggedIn;
 
     // 持仓更新 任务控制
-    private CancellationTokenSource m_positionUpdateTaskCancellation = new CancellationTokenSource();
+    private CancellationTokenSource m_positionUpdateTaskCancellation;
 
     // 撤单更新 任务控制
-    private CancellationTokenSource m_revokeUpdateTaskCancellation = new CancellationTokenSource();
+    private CancellationTokenSource m_revokeUpdateTaskCancellation;
 
     // 是否要 暂停更新撤单信息，当有撤单操作时为true
     private bool m_shouldPauseRevokeUpdate = false;
@@ -137,6 +137,8 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
 
     private EastMoneyRevokeInfo m_revokeInfo = new EastMoneyRevokeInfo();
 
+    private Queue<EastMoneyCircularOrderInfo> m_circularOrderQueue = new Queue<EastMoneyCircularOrderInfo>();
+        
     public EastMoneyTradeManager()
     {
         m_browserList.Add(m_browserBuy);
@@ -147,6 +149,9 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
 
     private void DoSomethingAfterLoginSuccess()
     {
+        m_positionUpdateTaskCancellation = new CancellationTokenSource();
+        m_revokeUpdateTaskCancellation = new CancellationTokenSource();
+
         WidgetManagement.GetWidget<EastMoneyTradeLoginWindow>().isOpened = false;
 
         // 登陆成功后，右上角会有 退出按钮
@@ -170,6 +175,7 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
         {
             while (true)
             {
+                m_positionUpdateTaskCancellation.Token.ThrowIfCancellationRequested();
                 HandlePositionUpdate();
                 await Task.Delay(1000, m_positionUpdateTaskCancellation.Token);
             }
@@ -180,6 +186,8 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
         {
             while (true)
             {
+                m_revokeUpdateTaskCancellation.Token.ThrowIfCancellationRequested();
+
                 if (!m_shouldPauseRevokeUpdate)
                 {
                     HandleRevokeUpdate();
@@ -195,6 +203,7 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
             WidgetManagement.GetWidget<MessageBox>().SetContent("交易系统提醒", "您已经登录了超过3个小时，该重新登陆了!");
             Instance.m_isLoggedIn = false;
             LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.LoginStateChanged, false);
+            ShutDownUpdateTask();
         }, 10800000);
 
         // 记录登陆状态
@@ -229,7 +238,6 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
                 Instance.HandleLoginButtonClick((string)parameters[0]);
             }
             );
-            ;
         }
 
         if (!Instance.isLoggedIn)
@@ -246,6 +254,13 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
     public static void TryBuy()
     {
         Instance.ExecuteBuyByRatio("600000", 1);
+    }
+
+
+    [MenuItem("交易/尝试循环策略购买")]
+    public static void TryCircularBuy()
+    {
+        
     }
 
     public void ExecuteBuyByRatio(string code, int ratio)
@@ -438,5 +453,11 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
             });
         }
         LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.RevokeUpdate, m_revokeInfo);
+    }
+
+    private void ShutDownUpdateTask()
+    {
+        m_positionUpdateTaskCancellation.Cancel();
+        m_revokeUpdateTaskCancellation.Cancel();
     }
 }
