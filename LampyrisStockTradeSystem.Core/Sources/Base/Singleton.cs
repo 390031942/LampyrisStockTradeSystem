@@ -16,7 +16,7 @@ public class Singleton<T> where T : class, new()
         {
             if(ms_instance == null)
             {
-                bool implementsILifeCycle = typeof(Application).GetInterfaces().Any(i => i == typeof(ILifecycle));
+                bool implementsILifeCycle = typeof(T).GetInterfaces().Any(i => i == typeof(ILifecycle));
                 if(implementsILifeCycle)
                 {
                     ms_instance = LifecycleManager.Instance.Get<T>();
