@@ -622,6 +622,10 @@ public class QuoteDatabase : SerializableSingleton<QuoteDatabase>, IPostSerializ
         //     StockData stockData = (StockData)param[0];
         //     UpdateHistoryQuotes(stockData);
         // }));
+        if(m_code2BriefQuoteDataMap == null)
+        {
+            m_code2BriefQuoteDataMap = new Dictionary<string, IndexBriefQuoteData>();
+        }
     }
 
     public List<SearchResult> GetSearchResults(string code)

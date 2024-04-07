@@ -94,6 +94,12 @@ public class EastMoneyDealInfo
 // 循环申报信息
 public class EastMoneyCircularOrderInfo
 {
+    // 代码
+    public string stockCode;
+
+    // 名称
+    public string stockName;
+
     // true:买入方向,false:卖出方向
     public bool isBuy;
 
@@ -108,6 +114,9 @@ public class EastMoneyCircularOrderInfo
 
     // 剩余股数
     public int leftCount;
+
+    // 上一次的委托ID
+    public int previousOrderId;
 }
 
 // 仓位选择

@@ -11,6 +11,7 @@ using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
 using System;
+using System.Collections.ObjectModel;
 
 
 /// <summary>
@@ -26,7 +27,7 @@ public class BrowserSystem
     public void Init()
     {
         ChromeOptions Options = new ChromeOptions();
-        #if LAMPYRIS_DEBUG
+        #if LAMPYRIS_RELEASE
         Options.AddArgument("--headless"); // 设置为Headless模式
         #endif // endif LAMPYRIS_DEBUG
 
@@ -308,38 +309,9 @@ public class BrowserSystem
         }
     }
 
-    public List<Cookie> GetPureDomainCookies(ICollection<Cookie> cookies)
+    public ReadOnlyCollection<Cookie> GetCookies()
     {
-        // 做一个域到cookie的映射
-        Dictionary<string, List<Cookie>> domain2cookie = new Dictionary<string, List<Cookie>>();
-
-        foreach (Cookie cookie in cookies)
-        {
-            string domain = cookie.Domain;
-            if (domain2cookie.ContainsKey(domain))
-            {
-                domain2cookie[domain].Add(cookie);
-            }
-            else
-            {
-                domain2cookie[domain] = new List<Cookie> { cookie };
-            }
-        }
-
-        int maxCnt = 0;
-        string ansDomain = "";
-        foreach (var domain in domain2cookie.Keys)
-        {
-            int cnt = domain2cookie[domain].Count;
-            if (cnt > maxCnt)
-            {
-                maxCnt = cnt;
-                ansDomain = domain;
-            }
-        }
-
-        List<Cookie> ansCookies = domain2cookie[ansDomain];
-        return ansCookies;
+        return m_chromeDriver?.Manage().Cookies.AllCookies;
     }
 
     public void Refresh()

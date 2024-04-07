@@ -1,7 +1,14 @@
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
+using OpenTK.Compute.OpenCL;
+using System;
+using System.Collections.ObjectModel;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Security.Policy;
 using System.Text;
 using System.Threading;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace LampyrisStockTradeSystem;
 
@@ -92,7 +99,7 @@ public class EastMoneyTradeUrlGetter:Singleton<EastMoneyTradeUrlGetter>
         }
     }
 }
-public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
+public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycle
 {
     // 东方财富网页交易上的仓位选择，分别对应: 全仓，1/2仓, 1/3仓，1/4仓
     private static Dictionary<int, string> m_ratioCode2Id = new Dictionary<int, string>()
@@ -108,6 +115,8 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
     private BrowserSystem m_browserSell = new BrowserSystem();
     private BrowserSystem m_browserRevoke = new BrowserSystem();
     private BrowserSystem m_browserQuery = new BrowserSystem();
+
+    private HttpClient m_httpClient = new HttpClient();
 
     private List<BrowserSystem> m_browserList = new List<BrowserSystem>();
 
@@ -138,7 +147,7 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
     private EastMoneyRevokeInfo m_revokeInfo = new EastMoneyRevokeInfo();
 
     private Queue<EastMoneyCircularOrderInfo> m_circularOrderQueue = new Queue<EastMoneyCircularOrderInfo>();
-        
+
     public EastMoneyTradeManager()
     {
         m_browserList.Add(m_browserBuy);
@@ -154,6 +163,9 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
 
         WidgetManagement.GetWidget<EastMoneyTradeLoginWindow>().isOpened = false;
 
+        MessageBox msgBox = (MessageBox)WidgetManagement.GetWidget<MessageBox>();
+        msgBox.SetContent("交易登录", "登陆成功，准备吃巨肉");
+        return;
         // 登陆成功后，右上角会有 退出按钮
         m_browserBuy.WaitElement(By.XPath("//p[@class='pr10 lh40']/span/a[contains(text(), '退出')]"), 5);
 
@@ -209,9 +221,6 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
         // 记录登陆状态
         m_isLoggedIn = true;
         LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.LoginStateChanged, true);
-
-        MessageBox msgBox = (MessageBox)WidgetManagement.GetWidget<MessageBox>();
-        msgBox.SetContent("交易登录", "登陆成功，准备吃巨肉");
     }
 
     private void RequestTradeUrl()
@@ -260,7 +269,7 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
     [MenuItem("交易/尝试循环策略购买")]
     public static void TryCircularBuy()
     {
-        
+
     }
 
     public void ExecuteBuyByRatio(string code, int ratio)
@@ -271,6 +280,36 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
         m_browserBuy.Input(By.Id("stockCode"), code);
         m_browserBuy.WaitElementWithReturnValue(by1, 5)?.Click();
         m_browserBuy.Click(By.Id(m_ratioCode2Id[ratio]));
+
+        try
+        {
+            m_browserBuy.Click(by2);
+            m_browserBuy.Click(By.CssSelector("a[data-role='confirm'].btn_jh"));
+            string info = m_browserBuy.GetText(By.ClassName("cxc_bd"));
+            m_browserBuy.Click(By.Id("btnCxcConfirm"));
+
+            WidgetManagement.GetWidget<MessageBox>().SetContent("委托买入结果", info);
+        }
+        catch (Exception)
+        {
+            WidgetManagement.GetWidget<MessageBox>().SetContent("委托买入结果", "根本买不了啊，是不是没钱了");
+        }
+    }
+
+    public void ExecuteBuyByCount(string code, int count)
+    {
+        if (count <= 0)
+        {
+            WidgetManagement.GetWidget<MessageBox>().SetContent("委托买入结果", "搞笑吗，委托数量必须大于0");
+            return;
+        }
+
+        By by1 = By.CssSelector($"[id*='{code}']");
+        By by2 = By.Id("btnConfirm");
+
+        m_browserBuy.Input(By.Id("stockCode"), code);
+        m_browserBuy.WaitElementWithReturnValue(by1, 5)?.Click();
+        m_browserBuy.Input(By.Id("iptCount"), count.ToString());
 
         try
         {
@@ -311,7 +350,38 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
         }
     }
 
-    public void ExecuteRevoke(int orderId)
+    public void ExecuteSellByCount(string code, int count)
+    {
+        if (count <= 0)
+        {
+            WidgetManagement.GetWidget<MessageBox>().SetContent("委托卖出结果", "搞笑吗，委托数量必须大于0");
+            return;
+        }
+
+        By by1 = By.CssSelector($"[id*='{code}']");
+        By by2 = By.Id("btnConfirm");
+
+        m_browserSell.Input(By.Id("stockCode"), code);
+        m_browserSell.WaitElementWithReturnValue(by1, 5)?.Click();
+        m_browserSell.Input(By.Id("iptCount"), count.ToString());
+
+        try
+        {
+            m_browserSell.Click(by2);
+            m_browserSell.Click(By.CssSelector("a[data-role='confirm'].btn_jh"));
+            string info = m_browserSell.GetText(By.ClassName("cxc_bd"));
+            m_browserSell.Click(By.Id("btnCxcConfirm"));
+
+            WidgetManagement.GetWidget<MessageBox>().SetContent("委托卖出结果", info);
+        }
+        catch (Exception)
+        {
+            WidgetManagement.GetWidget<MessageBox>().SetContent("委托卖出结果", "根本买不了啊，是不是卡bug了");
+        }
+    }
+
+    // 执行撤单指令，返回撤单的详情，如果撤单失败(如委托号不存在)，则返回null
+    public EastMoneyRevokeStockInfo ExecuteRevoke(int orderId)
     {
         // 定位持仓股票信息 表格元素
         IWebElement tableElement = m_browserRevoke.GetWebElement(By.Id("tabBody"));
@@ -324,12 +394,29 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
             IList<IWebElement> rowTds = row.FindElements(By.TagName("td"));
             int id = ConvertUtil.SafeParse<int>(rowTds[10].Text);
 
-            if(orderId == id)
+            if (orderId == id)
             {
                 rowTds[11].FindElement(By.TagName("button"))?.Click();
                 m_browserBuy.Click(By.Id("btnCxcConfirm"));
+
+                return new EastMoneyRevokeStockInfo()
+                {
+                    timeString = rowTds[0].Text,
+                    stockCode = rowTds[1].FindElement(By.TagName("a")).Text,
+                    stockName = rowTds[2].FindElement(By.TagName("a")).Text,
+                    isBuy = rowTds[3].Text.Contains("买"),
+                    orderCount = ConvertUtil.SafeParse<int>(rowTds[4].Text),
+                    status = rowTds[5].Text,
+                    orderPrice = ConvertUtil.SafeParse<float>(rowTds[6].Text),
+                    dealCount = ConvertUtil.SafeParse<int>(rowTds[7].Text),
+                    dealMoney = ConvertUtil.SafeParse<float>(rowTds[8].Text),
+                    dealPrice = ConvertUtil.SafeParse<float>(rowTds[9].Text),
+                    id = ConvertUtil.SafeParse<int>(rowTds[10].Text),
+                };
             }
         }
+
+        return null;
     }
 
     private void HandleLoginButtonClick(string validCode)
@@ -459,5 +546,104 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>
     {
         m_positionUpdateTaskCancellation.Cancel();
         m_revokeUpdateTaskCancellation.Cancel();
+    }
+
+    public void OnStart()
+    {
+
+    }
+
+    public void OnUpdate(float dTime)
+    {
+        // 处理循环申报
+        while (m_circularOrderQueue.TryDequeue(out var orderInfo))
+        {
+            // 先执行撤单
+            EastMoneyRevokeStockInfo stockInfo = ExecuteRevoke(orderInfo.previousOrderId);
+
+            if (stockInfo != null)
+            {
+                if (orderInfo.isBuy)
+                {
+                    ExecuteBuyByCount(stockInfo.stockCode, stockInfo.orderCount - stockInfo.dealCount);
+                }
+                else
+                {
+                    ExecuteSellByCount(stockInfo.stockCode, stockInfo.orderCount - stockInfo.dealCount);
+                }
+            }
+        }
+    }
+
+    public void OnDestroy()
+    {
+        m_browserList.ForEach((browser) => { browser.Close(); });
+    }
+
+    private static HttpClientHandler UseHttpClientWithCookies(ReadOnlyCollection<OpenQA.Selenium.Cookie> seleniumCookies)
+    {
+        var handler = new HttpClientHandler();
+
+        var cookieContainer = new CookieContainer();
+        handler.CookieContainer = cookieContainer;
+
+        // 转换Cookies并添加到CookieContainer中
+        foreach (var seleniumCookie in seleniumCookies)
+        {
+            System.Net.Cookie cookie = new System.Net.Cookie
+            {
+                Name = seleniumCookie.Name,
+                Value = seleniumCookie.Value,
+                Domain = seleniumCookie.Domain,
+                Path = seleniumCookie.Path,
+                Expires = seleniumCookie.Expiry.GetValueOrDefault(DateTime.Now.AddYears(1)), // 设置一个默认的过期时间
+                Secure = seleniumCookie.Secure,
+                HttpOnly = seleniumCookie.IsHttpOnly
+            };
+            cookieContainer.Add(cookie);
+        }
+
+        return handler;
+    }
+
+    [MenuItem("交易/测试POST")]
+    private static void TestPost()
+    {
+        var cookies = Instance.m_browserBuy.GetCookies();
+        Instance.m_httpClient = new HttpClient(UseHttpClientWithCookies(cookies));
+        var url = "https://jywg.18.cn/Search/Position";
+
+        var client = Instance.m_httpClient;
+
+        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        client.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("zh-CN"));
+        client.DefaultRequestHeaders.Add("sec-ch-ua", "\"Google Chrome\";v=\"123\", \"Not:A-Brand\";v=\"8\", \"Chromium\";v=\"123\"");
+        client.DefaultRequestHeaders.Add("sec-ch-ua-mobile", "?0");
+        client.DefaultRequestHeaders.Add("sec-ch-ua-platform", "\"Windows\"");
+        client.DefaultRequestHeaders.Add("sec-fetch-dest", "empty");
+        client.DefaultRequestHeaders.Add("sec-fetch-mode", "cors");
+        client.DefaultRequestHeaders.Add("sec-fetch-site", "same-origin");
+        client.DefaultRequestHeaders.Add("x-requested-with", "XMLHttpRequest");
+        client.DefaultRequestHeaders.Add("gw_reqtimestamp", "1712479062234");
+        client.DefaultRequestHeaders.Referrer = new Uri("https://jywg.18.cn/Search/GetHisOrdersData");
+
+        // 设置请求的Body
+        var requestBody = new StringContent("st=2024-03-31&et=2024-04-07&qqhs=20&dwc=", Encoding.UTF8, "application/x-www-form-urlencoded");
+
+        // 发送POST请求
+        var response = client.PostAsync("https://jywg.18.cn/Search/GetHisOrdersData", requestBody).Result;
+
+        // 确保请求成功
+        response.EnsureSuccessStatusCode();
+
+        // 读取并打印返回的结果
+        var responseBody = response.Content.ReadAsStringAsync().Result;
+        Console.WriteLine(responseBody);
+    }
+
+    [MenuItem("交易/测试POST1")]
+    private static void TestPost1()
+    {
+
     }
 }
