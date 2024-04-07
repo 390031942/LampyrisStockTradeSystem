@@ -45,7 +45,43 @@ public class EastMoneyPositionInfo
 // 撤单信息
 public class EastMoneyRevokeInfo
 {
+    public List<EastMoneyRevokeStockInfo> stockInfos = new List<EastMoneyRevokeStockInfo>();
+}
 
+public class EastMoneyRevokeStockInfo
+{
+    // 时间
+    public string timeString;
+
+    // 是不是买入
+    public bool isBuy;
+
+    // 代码
+    public string stockCode;
+
+    // 名称
+    public string stockName;
+
+    // 委托数量
+    public int orderCount;
+
+    // 成交数量
+    public int dealCount;
+
+    // 委托价格
+    public float orderPrice;
+
+    // 成交价格
+    public float dealPrice;
+
+    // 成交金额
+    public float dealMoney;
+
+    // 状态
+    public string status;
+
+    // 委托编号
+    public int id;
 }
 
 
@@ -53,6 +89,25 @@ public class EastMoneyRevokeInfo
 public class EastMoneyDealInfo
 {
 
+}
+
+// 循环申报信息
+public class EastMoneyCircularOrderInfo
+{
+    // true:买入方向,false:卖出方向
+    public bool isBuy;
+
+    // 循环下单 重复次数
+    public int retryCount;
+
+    // 下单档位
+    public int askBidLevel;
+
+    // 总申报股数
+    public int totalCount;
+
+    // 剩余股数
+    public int leftCount;
 }
 
 // 仓位选择

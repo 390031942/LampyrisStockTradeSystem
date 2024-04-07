@@ -26,7 +26,10 @@ public class BrowserSystem
     public void Init()
     {
         ChromeOptions Options = new ChromeOptions();
-        // Options.AddArgument("--headless"); // 设置为Headless模式
+        #if LAMPYRIS_DEBUG
+        Options.AddArgument("--headless"); // 设置为Headless模式
+        #endif // endif LAMPYRIS_DEBUG
+
         // Options.AddArgument($"user-data-dir={PathUtil.CookieDataSavePath}");
         Options.AddArgument("--ignore-certificate-errors");
 
@@ -339,4 +342,8 @@ public class BrowserSystem
         return ansCookies;
     }
 
+    public void Refresh()
+    {
+        m_chromeDriver?.Navigate().Refresh();
+    }
 }
