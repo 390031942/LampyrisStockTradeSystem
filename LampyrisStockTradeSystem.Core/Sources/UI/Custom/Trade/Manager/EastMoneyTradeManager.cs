@@ -180,37 +180,8 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
         var mode = (EastMoneyTradeMode)EastMoneyTradeModeSetting.Instance.activeMode;
         m_browserSell.Request(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Sell]);
 
-        // 持仓更新 任务
-        Task.Run(async () =>
-        {
-            while (!m_positionUpdateTaskCancellation)
-            {
-                try
-                {
-                    HandlePositionUpdate();
-                }
-                catch (Exception ex) { }
-                await Task.Delay(900);
-            }
-        });
-
-        // 撤单更新 任务
-        Task.Run(async () =>
-        {
-            while (!m_revokeUpdateTaskCancellation)
-            {
-
-                if (!m_shouldPauseRevokeUpdate)
-                {
-                    try
-                    {
-                        HandleRevokeUpdate();
-                    }
-                    catch (Exception ex) { }
-                }
-                await Task.Delay(900);
-            }
-        });
+        // HandlePositionUpdate();
+        // HandleRevokeUpdate();
 
         // 三小时后登陆失效,10800000 = 3 * 3600 * 1000ms 
         CallTimer.Instance.SetInterval(() =>
@@ -474,17 +445,23 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
         }
         catch (Exception ex)
         {
-            // DoSomethingAfterLoginSuccess();
+            //DoSomethingAfterLoginSuccess();
         }
+    }
+
+    public void ExecutePositionUpdate() 
+    {
+        var mode = (EastMoneyTradeMode)EastMoneyTradeModeSetting.Instance.activeMode;
+        m_browserQuery.Request(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Position]);
+        m_browserRevoke.Request(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Revoke]);
+
+        Thread.Sleep(100);
+
+        HandlePositionUpdate();
     }
 
     private void HandlePositionUpdate()
     {
-        var mode = (EastMoneyTradeMode)EastMoneyTradeModeSetting.Instance.activeMode;
-        m_browserQuery.Request(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Position]);
-
-        Thread.Sleep(100);
-
         // 定位资产表格元素
         IWebElement zichanElement = m_browserQuery.GetWebElement(By.ClassName("zichan"));
 
@@ -530,11 +507,6 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     private void HandleRevokeUpdate()
     {
-        var mode = (EastMoneyTradeMode)EastMoneyTradeModeSetting.Instance.activeMode;
-        m_browserRevoke.Request(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Revoke]);
-
-        Thread.Sleep(100);
-
         // 定位持仓股票信息 表格元素
         IWebElement tableElement = m_browserRevoke.GetWebElement(By.Id("tabBody"));
         // 获取所有的行元素

@@ -67,6 +67,10 @@ public class HKChaseRiseTradeSubWindow : Widget
             return;
         }
         // 创建滚动区域
+        if(ImGui.Button("手动刷新"))
+        {
+            EastMoneyTradeManager.Instance.ExecutePositionUpdate();
+        }
         ImGui.BeginChild("滚动区域", new Vector2(0, 0), true);
         {
             if (ImGui.CollapsingHeader("持仓"))
