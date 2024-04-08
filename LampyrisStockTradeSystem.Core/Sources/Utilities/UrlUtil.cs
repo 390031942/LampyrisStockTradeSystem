@@ -14,7 +14,7 @@ public class UrlUtil
         // 港股代码长度为5
         if(stockCode.Length == 5)
         {
-            return "116" + stockCode;
+            return "116." + stockCode;
         }
         else if(stockCode.Length == 6)
         {

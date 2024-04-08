@@ -57,5 +57,8 @@ public enum HKStockUnusualStrategy
     [NamedValue("跌幅≥10%")]
     FallPercentage = 6,
 
-    Count = 6,
+    [NamedValue("(测试专用)涨速≥1.5%")]
+    RiseSpeedTest = 7,
+
+    Count = 7,
 }

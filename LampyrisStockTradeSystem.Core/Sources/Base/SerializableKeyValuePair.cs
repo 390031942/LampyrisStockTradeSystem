@@ -12,8 +12,8 @@ public class SerializableKeyValuePair<TKey, TValue>
     private TKey m_key;
     private TValue m_value;
 
-    public TKey Key { get; }
-    public TValue Value { get; }
+    public TKey Key => m_key;
+    public TValue Value => m_value;
 
     public SerializableKeyValuePair(TKey key, TValue value)
     {

@@ -6,7 +6,6 @@
 
 namespace LampyrisStockTradeSystem;
 
-using Newtonsoft.Json;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
 using OpenQA.Selenium.Support.UI;
@@ -27,9 +26,10 @@ public class BrowserSystem
     public void Init()
     {
         ChromeOptions Options = new ChromeOptions();
-        #if LAMPYRIS_RELEASE
+
+#if LAMPYRIS_RELEASE
         Options.AddArgument("--headless"); // 设置为Headless模式
-        #endif // endif LAMPYRIS_DEBUG
+#endif // endif LAMPYRIS_RELEASE
 
         // Options.AddArgument($"user-data-dir={PathUtil.CookieDataSavePath}");
         Options.AddArgument("--ignore-certificate-errors");
@@ -49,7 +49,7 @@ public class BrowserSystem
 
     public void Close()
     {
-        m_chromeDriver.Quit();
+        m_chromeDriver?.Quit();
     }
 
     public void Request(string url)
@@ -203,9 +203,10 @@ public class BrowserSystem
                 if (m_chromeDriver.Url.Contains(url))
                 {
                     // 如果是，跳出循环
-                    break;
+                    return;
                 }
             }
+            m_chromeDriver.Navigate().GoToUrl(url);
         }
     }
 

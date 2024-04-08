@@ -7,7 +7,6 @@
 using ImGuiNET;
 using Newtonsoft.Json.Linq;
 using System.Numerics;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace LampyrisStockTradeSystem;
 
@@ -38,19 +37,19 @@ public class HKChaseRiseWindow:Widget
     private float m_imageUpdateTimeCounter = 0.0f;
 
     // 仓位选择
-    private int m_tradeOrderRatio = 1;
+    private int m_tradeOrderRatio { get => AppSettings.Instance.tradeOrderRatio; set => AppSettings.Instance.tradeOrderRatio =value; }
 
     // 成交剩余策略
-    private int m_tradeOrderLeftStrategy = 1;
+    private int m_tradeOrderLeftStrategy { get => AppSettings.Instance.tradeOrderLeftStrategy; set => AppSettings.Instance.tradeOrderLeftStrategy = value; }
 
     // 异动筛选策略
-    private int m_unusualStrategy = 1;
+    private int m_unusualStrategy { get => AppSettings.Instance.unusualStrategy; set => AppSettings.Instance.unusualStrategy = value; }
 
     // 卖出档位
-    private int m_askLevel = 3;
+    private int m_askLevel { get => AppSettings.Instance.askLevel; set => AppSettings.Instance.askLevel = value; }
 
     // 买入档位
-    private int m_bidLevel = 3;
+    private int m_bidLevel { get => AppSettings.Instance.bidLevel; set => AppSettings.Instance.bidLevel = value; }
 
     public override string Name => "港股通追涨全景图";
 
@@ -149,18 +148,39 @@ public class HKChaseRiseWindow:Widget
                                 HKChaseRiseQuoteData stockData = m_hkStockList[i];
                                 StockRealTimeQuoteData realTimeQuoteData = (StockRealTimeQuoteData)(stockData.quoteData.realTimeQuoteData);
 
-                                // if ((realTimeQuoteData.kLineData.closePrice > 1.5f ? (realTimeQuoteData.riseSpeed > 1.5f) : (realTimeQuoteData.riseSpeed > 2.0f)))
-                                if (realTimeQuoteData.riseSpeed > 1.5f)
+                                bool satisfield = false;
+                                switch ((HKStockUnusualStrategy)AppSettings.Instance.unusualStrategy)
                                 {
-                                    // if (stockData.moneyRank < 1.5f)
+                                    case HKStockUnusualStrategy.RiseSpeedNormal:
+                                        satisfield = ((realTimeQuoteData.kLineData.closePrice > 1.5f ? (realTimeQuoteData.riseSpeed > 1.5f) : (realTimeQuoteData.riseSpeed > 2.0f)));
+                                        satisfield &= stockData.moneyRank < 0.5f;
+                                        break;
+                                    case HKStockUnusualStrategy.RiseSpeedEx: 
+                                        satisfield = (realTimeQuoteData.riseSpeed > 5f);
+                                        break;
+                                    case HKStockUnusualStrategy.FallSpeed:
+                                        satisfield = (realTimeQuoteData.riseSpeed < -5f);
+                                        break;
+                                    case HKStockUnusualStrategy.Breakthrough:break;
+                                    case HKStockUnusualStrategy.RisePercentage:
+                                        satisfield = (realTimeQuoteData.kLineData.percentage) > 10.0f;
+                                        break;
+                                    case HKStockUnusualStrategy.FallPercentage:
+                                        satisfield = (realTimeQuoteData.kLineData.percentage) < -10.0f;
+                                        break;
+                                    case HKStockUnusualStrategy.RiseSpeedTest:
+                                        satisfield = (realTimeQuoteData.riseSpeed > 1.5f);
+                                        break;
+                                }
+                                
+                                if(satisfield)
+                                {
+                                    int ms = DateTime.Now.Millisecond;
+                                    if (ms - stockData.lastUnusualTimestamp > 300 * 1000 || stockData.lastUnusualTimestamp <= 0)
                                     {
-                                        int ms = DateTime.Now.Millisecond;
-                                        if (ms - stockData.lastUnusualTimestamp > 300 * 1000 || stockData.lastUnusualTimestamp <= 0)
-                                        {
-                                            m_displayingStockData.Add(stockData);
-                                            m_stockCode2DisplayingDataIndex[stockData.quoteData.code] = m_displayingStockData.Count - 1;
-                                            stockData.lastUnusualTimestamp = ms;
-                                        }
+                                        m_displayingStockData.Add(stockData);
+                                        m_stockCode2DisplayingDataIndex[stockData.quoteData.code] = m_displayingStockData.Count - 1;
+                                        stockData.lastUnusualTimestamp = ms;
                                     }
                                 }
                             }
@@ -212,6 +232,7 @@ public class HKChaseRiseWindow:Widget
                 ImGui.SameLine();
             }
 
+            ImGui.BeginDisabled();
             ImGui.Text("成交剩余策略");
             ImGui.SameLine();
             for (int i = 1; i <= (int)TradeOrderLeftStrategy.Count; i++)
@@ -222,6 +243,7 @@ public class HKChaseRiseWindow:Widget
                 }
                 ImGui.SameLine();
             }
+            ImGui.EndDisabled();
 
             // 筛选策略
             // ImGui.Text()
@@ -279,7 +301,7 @@ public class HKChaseRiseWindow:Widget
 
             ImGui.SetNextItemWidth(450);
 
-            if (ImGui.BeginCombo("##HKCheaseRiseWindowUnusualStrategyh", EnumNameManager.GetName((HKStockUnusualStrategy)m_unusualStrategy)))
+            if (ImGui.BeginCombo("##HKCheaseRiseWindowUnusualStrategy", EnumNameManager.GetName((HKStockUnusualStrategy)m_unusualStrategy)))
             {
                 for (int i = 1; i <= (int)HKStockUnusualStrategy.Count; i++)
                 {
@@ -292,7 +314,7 @@ public class HKChaseRiseWindow:Widget
                     // 设置默认选中的项
                     if (isSelected)
                     {
-                        ImGui.SetItemDefaultFocus();
+                        ImGui.SetItemDefaultFocus();4
                     }
                 }
                 ImGui.EndCombo();
@@ -317,14 +339,27 @@ public class HKChaseRiseWindow:Widget
 
                     ImGui.TableNextColumn();
 
-                    string displayInfo = quoteData.quoteData.code + " " +
-                                         quoteData.quoteData.name + "\n" +
-                                         "现价:" + quoteData.quoteData.realTimeQuoteData.kLineData.closePrice + "\n" +
+                    (float percentage, int score) = HKLinkStockPortraitData.Instance.QueryRecentYearData(quoteData.quoteData.code);
+
+                    string name = quoteData.quoteData.code + " " +
+                                  quoteData.quoteData.name;
+w
+                    string displayInfo = "现价:" + quoteData.quoteData.realTimeQuoteData.kLineData.closePrice + "\n" +
                                          "涨幅:" + quoteData.quoteData.realTimeQuoteData.kLineData.percentage + "%%\n" +
                                          "涨速:" + ((StockRealTimeQuoteData)(quoteData.quoteData.realTimeQuoteData)).riseSpeed + "%%\n" +
                                          "成交额:" + StringUtility.GetMoneyString(quoteData.quoteData.realTimeQuoteData.kLineData.money) + "\n" +
-                                         "成交额排位: 前" + (int)(100 * quoteData.moneyRank) + "%%";
+                                         "成交额排位: 前" + (int)(100 * quoteData.moneyRank) + "%%\n" +
+                                         "近一年最大涨幅:" + percentage + "%%\n近一年涨幅评分:" + score;
 
+                    var nameColor = AppUIStyle.Instance.normalWhiteColor;
+                    if (HKLinkSpeicalStockData.Instance.speicalExStockDataSet.Contains(quoteData.quoteData.name))
+                        nameColor = AppUIStyle.Instance.tipRedColor;
+                    else if(HKLinkSpeicalStockData.Instance.speicalStockDataSet.Contains(quoteData.quoteData.name))
+                        nameColor = AppUIStyle.Instance.tipYellowColor;
+
+                    ImGui.PushStyleColor(ImGuiCol.Text, nameColor);
+                    ImGui.Text(name); // 显示股票名称
+                    ImGui.PopStyleColor();
                     ImGui.Text(displayInfo); // 显示股票名称
 
                     ImGui.TableNextColumn();
@@ -424,7 +459,7 @@ public class HKChaseRiseWindow:Widget
                     {
                         if (EastMoneyTradeManager.Instance.isLoggedIn)
                         {
-                            EastMoneyTradeManager.Instance.ExecuteBuyByRatio(quoteData.quoteData.code, 1);
+                            EastMoneyTradeManager.Instance.ExecuteBuyByRatio(quoteData.quoteData.code, m_tradeOrderRatio);
                         }
                         else
                         {

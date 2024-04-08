@@ -5,10 +5,8 @@ using System;
 using System.Collections.ObjectModel;
 using System.Net;
 using System.Net.Http.Headers;
-using System.Security.Policy;
 using System.Text;
 using System.Threading;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace LampyrisStockTradeSystem;
 
@@ -131,10 +129,10 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
     public bool isLoggedIn => m_isLoggedIn;
 
     // 持仓更新 任务控制
-    private CancellationTokenSource m_positionUpdateTaskCancellation;
+    private bool m_positionUpdateTaskCancellation;
 
     // 撤单更新 任务控制
-    private CancellationTokenSource m_revokeUpdateTaskCancellation;
+    private bool m_revokeUpdateTaskCancellation;
 
     // 是否要 暂停更新撤单信息，当有撤单操作时为true
     private bool m_shouldPauseRevokeUpdate = false;
@@ -158,19 +156,16 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     private void DoSomethingAfterLoginSuccess()
     {
-        m_positionUpdateTaskCancellation = new CancellationTokenSource();
-        m_revokeUpdateTaskCancellation = new CancellationTokenSource();
+        m_positionUpdateTaskCancellation = false;
+        m_revokeUpdateTaskCancellation = false;
 
         WidgetManagement.GetWidget<EastMoneyTradeLoginWindow>().isOpened = false;
 
         MessageBox msgBox = (MessageBox)WidgetManagement.GetWidget<MessageBox>();
         msgBox.SetContent("交易登录", "登陆成功，准备吃巨肉");
-        return;
+
         // 登陆成功后，右上角会有 退出按钮
         m_browserBuy.WaitElement(By.XPath("//p[@class='pr10 lh40']/span/a[contains(text(), '退出')]"), 5);
-
-        // 关闭A股的买入页面，登录以后会默认跳转这个页面
-        m_browserBuy.CloseFirstWindowByUrl("https://jywg.18.cn/Trade/Buy");
 
         // 从index = 1的浏览器开始请求交易网页，因为第0个已经打开并登陆交易了
         for (int i = 1; i < m_browserList.Count; i++)
@@ -182,31 +177,40 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
             m_browserList[i].SetCookiesFromOther(m_browserBuy, (domain) => { return domain.Contains("18.cn"); }, ".18.cn");
         }
 
+        var mode = (EastMoneyTradeMode)EastMoneyTradeModeSetting.Instance.activeMode;
+        m_browserSell.Request(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Sell]);
+
         // 持仓更新 任务
         Task.Run(async () =>
         {
-            while (true)
+            while (!m_positionUpdateTaskCancellation)
             {
-                m_positionUpdateTaskCancellation.Token.ThrowIfCancellationRequested();
-                HandlePositionUpdate();
-                await Task.Delay(1000, m_positionUpdateTaskCancellation.Token);
+                try
+                {
+                    HandlePositionUpdate();
+                }
+                catch (Exception ex) { }
+                await Task.Delay(900);
             }
-        }, m_positionUpdateTaskCancellation.Token);
+        });
 
         // 撤单更新 任务
         Task.Run(async () =>
         {
-            while (true)
+            while (!m_revokeUpdateTaskCancellation)
             {
-                m_revokeUpdateTaskCancellation.Token.ThrowIfCancellationRequested();
 
                 if (!m_shouldPauseRevokeUpdate)
                 {
-                    HandleRevokeUpdate();
+                    try
+                    {
+                        HandleRevokeUpdate();
+                    }
+                    catch (Exception ex) { }
                 }
-                await Task.Delay(1000, m_revokeUpdateTaskCancellation.Token);
+                await Task.Delay(900);
             }
-        }, m_revokeUpdateTaskCancellation.Token);
+        });
 
         // 三小时后登陆失效,10800000 = 3 * 3600 * 1000ms 
         CallTimer.Instance.SetInterval(() =>
@@ -259,26 +263,23 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
         }
     }
 
-    [MenuItem("交易/尝试购买")]
-    public static void TryBuy()
-    {
-        Instance.ExecuteBuyByRatio("600000", 1);
-    }
-
-
-    [MenuItem("交易/尝试循环策略购买")]
-    public static void TryCircularBuy()
-    {
-
-    }
-
     public void ExecuteBuyByRatio(string code, int ratio)
     {
+        var mode = (EastMoneyTradeMode)EastMoneyTradeModeSetting.Instance.activeMode;
+        m_browserBuy.Request(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Buy]);
+        Thread.Sleep(100);
+
         By by1 = By.CssSelector($"[id*='{code}']");
         By by2 = By.Id("btnConfirm");
 
         m_browserBuy.Input(By.Id("stockCode"), code);
         m_browserBuy.WaitElementWithReturnValue(by1, 5)?.Click();
+
+        string buyPrice = m_browserBuy.GetWebElement(By.Id("s" + AppSettings.Instance.bidLevel)).Text;
+        m_browserBuy.Click(By.Id("iptPrice"));
+        m_browserBuy.Input(By.Id("iptPrice"), OpenQA.Selenium.Keys.Control + "a");
+        m_browserBuy.Input(By.Id("iptPrice"), buyPrice);
+        m_browserBuy.Click(By.Id(m_ratioCode2Id[ratio]));
         m_browserBuy.Click(By.Id(m_ratioCode2Id[ratio]));
 
         try
@@ -328,11 +329,20 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     public void ExecuteSellByRatio(string code, int ratio)
     {
+        var mode = (EastMoneyTradeMode)EastMoneyTradeModeSetting.Instance.activeMode;
+        m_browserSell.Request(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Sell]);
+        Thread.Sleep(100);
+
         By by1 = By.CssSelector($"[id*='{code}']");
         By by2 = By.Id("btnConfirm");
 
         m_browserSell.Input(By.Id("stockCode"), code);
         m_browserSell.WaitElementWithReturnValue(by1, 5)?.Click();
+        string sellPrice = m_browserSell.GetWebElement(By.Id("b" + AppSettings.Instance.askLevel)).Text;
+        m_browserSell.Click(By.Id("iptPrice"));
+        m_browserSell.Input(By.Id("iptPrice"), OpenQA.Selenium.Keys.Control + "a");
+        m_browserSell.Input(By.Id("iptPrice"), sellPrice);
+        m_browserSell.Click(By.Id(m_ratioCode2Id[ratio]));
         m_browserSell.Click(By.Id(m_ratioCode2Id[ratio]));
 
         try
@@ -383,6 +393,11 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
     // 执行撤单指令，返回撤单的详情，如果撤单失败(如委托号不存在)，则返回null
     public EastMoneyRevokeStockInfo ExecuteRevoke(int orderId)
     {
+        m_shouldPauseRevokeUpdate = true;
+        var mode = (EastMoneyTradeMode)EastMoneyTradeModeSetting.Instance.activeMode;
+        m_browserRevoke.Request(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Revoke]);
+        Thread.Sleep(110);
+
         // 定位持仓股票信息 表格元素
         IWebElement tableElement = m_browserRevoke.GetWebElement(By.Id("tabBody"));
         // 获取所有的行元素
@@ -392,29 +407,33 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
         {
             // 对于每一行，获取所有的列元素
             IList<IWebElement> rowTds = row.FindElements(By.TagName("td"));
-            int id = ConvertUtil.SafeParse<int>(rowTds[10].Text);
+            int id = ConvertUtil.SafeParse<int>(rowTds[11].Text);
 
             if (orderId == id)
             {
-                rowTds[11].FindElement(By.TagName("button"))?.Click();
-                m_browserBuy.Click(By.Id("btnCxcConfirm"));
+                rowTds[12].FindElement(By.TagName("button"))?.Click();
+                m_browserRevoke.Click(By.Id("btnCxcConfirm"));
+
+                m_shouldPauseRevokeUpdate = false;
 
                 return new EastMoneyRevokeStockInfo()
                 {
-                    timeString = rowTds[0].Text,
-                    stockCode = rowTds[1].FindElement(By.TagName("a")).Text,
-                    stockName = rowTds[2].FindElement(By.TagName("a")).Text,
-                    isBuy = rowTds[3].Text.Contains("买"),
-                    orderCount = ConvertUtil.SafeParse<int>(rowTds[4].Text),
-                    status = rowTds[5].Text,
-                    orderPrice = ConvertUtil.SafeParse<float>(rowTds[6].Text),
-                    dealCount = ConvertUtil.SafeParse<int>(rowTds[7].Text),
-                    dealMoney = ConvertUtil.SafeParse<float>(rowTds[8].Text),
-                    dealPrice = ConvertUtil.SafeParse<float>(rowTds[9].Text),
-                    id = ConvertUtil.SafeParse<int>(rowTds[10].Text),
+                    timeString = rowTds[1].Text,
+                    stockCode = rowTds[2].FindElement(By.TagName("a")).Text,
+                    stockName = rowTds[3].FindElement(By.TagName("a")).Text,
+                    isBuy = rowTds[4].Text.Contains("买"),
+                    orderCount = ConvertUtil.SafeParse<int>(rowTds[5].Text),
+                    status = rowTds[6].Text,
+                    orderPrice = ConvertUtil.SafeParse<float>(rowTds[7].Text),
+                    dealCount = ConvertUtil.SafeParse<int>(rowTds[8].Text),
+                    dealMoney = ConvertUtil.SafeParse<float>(rowTds[9].Text),
+                    dealPrice = ConvertUtil.SafeParse<float>(rowTds[10].Text),
+                    id = ConvertUtil.SafeParse<int>(rowTds[11].Text),
                 };
             }
         }
+
+        m_shouldPauseRevokeUpdate = false;
 
         return null;
     }
@@ -455,18 +474,21 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
         }
         catch (Exception ex)
         {
-            DoSomethingAfterLoginSuccess();
+            // DoSomethingAfterLoginSuccess();
         }
     }
 
     private void HandlePositionUpdate()
     {
         var mode = (EastMoneyTradeMode)EastMoneyTradeModeSetting.Instance.activeMode;
-        m_browserQuery.SwitchToUrl(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Position]);
-        m_browserQuery.Refresh();
+        m_browserQuery.Request(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Position]);
+
+        Thread.Sleep(100);
 
         // 定位资产表格元素
         IWebElement zichanElement = m_browserQuery.GetWebElement(By.ClassName("zichan"));
+
+        m_positionInfo = new EastMoneyPositionInfo();
 
         m_positionInfo.totalMoney = zichanElement.FindElement(By.XPath("//span[text()='总资产']/following-sibling::span[1]")).Text;
         m_positionInfo.positionMoney = zichanElement.FindElement(By.XPath("//span[text()='总市值']/following-sibling::span[1]")).Text;
@@ -474,19 +496,18 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
         m_positionInfo.todayProfitLose = zichanElement.FindElement(By.XPath("//span[text()='当日盈亏']/following-sibling::span[1]")).Text;
         m_positionInfo.canUseMoney = zichanElement.FindElement(By.XPath("//span[text()='可用资金']/following-sibling::span[1]")).Text;
 
+
         // 定位持仓股票信息 表格元素
         IWebElement tableElement = m_browserQuery.GetWebElement(By.Id("tabBody"));
         // 获取所有的行元素
         IList<IWebElement> tableRows = tableElement.FindElements(By.TagName("tr"));
-
-        m_positionInfo.stockInfos.Clear();
 
         foreach (var row in tableRows)
         {
             // 对于每一行，获取所有的列元素
             IList<IWebElement> rowTds = row.FindElements(By.TagName("td"));
 
-            if (Convert.ToInt32(rowTds[2].Text) <= 0)
+            if (rowTds.Count < 11 || Convert.ToInt32(rowTds[2].Text) <= 0)
                 continue;
 
             m_positionInfo.stockInfos.Add(new EastMoneyPositionStockInfo()
@@ -509,34 +530,39 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     private void HandleRevokeUpdate()
     {
+        var mode = (EastMoneyTradeMode)EastMoneyTradeModeSetting.Instance.activeMode;
+        m_browserRevoke.Request(EastMoneyTradeUrlGetter.Instance[mode, EastMoneyTradeFunctionType.Revoke]);
+
+        Thread.Sleep(100);
+
         // 定位持仓股票信息 表格元素
         IWebElement tableElement = m_browserRevoke.GetWebElement(By.Id("tabBody"));
         // 获取所有的行元素
         IList<IWebElement> tableRows = tableElement.FindElements(By.TagName("tr"));
 
-        m_revokeInfo.stockInfos.Clear();
+        m_revokeInfo = new EastMoneyRevokeInfo();
 
         foreach (var row in tableRows)
         {
             // 对于每一行，获取所有的列元素
             IList<IWebElement> rowTds = row.FindElements(By.TagName("td"));
 
-            if (Convert.ToInt32(rowTds[2].Text) <= 0)
+            if (rowTds.Count < 13 || Convert.ToInt32(rowTds[2].Text) <= 0)
                 continue;
 
             m_revokeInfo.stockInfos.Add(new EastMoneyRevokeStockInfo()
             {
-                timeString = rowTds[0].Text,
-                stockCode = rowTds[1].FindElement(By.TagName("a")).Text,
-                stockName = rowTds[2].FindElement(By.TagName("a")).Text,
-                isBuy = rowTds[3].Text.Contains("买"),
-                orderCount = ConvertUtil.SafeParse<int>(rowTds[4].Text),
-                status = rowTds[5].Text,
-                orderPrice = ConvertUtil.SafeParse<float>(rowTds[6].Text),
-                dealCount = ConvertUtil.SafeParse<int>(rowTds[7].Text),
-                dealMoney = ConvertUtil.SafeParse<float>(rowTds[8].Text),
-                dealPrice = ConvertUtil.SafeParse<float>(rowTds[9].Text),
-                id = ConvertUtil.SafeParse<int>(rowTds[10].Text),
+                timeString = rowTds[1].Text,
+                stockCode = rowTds[2].FindElement(By.TagName("a")).Text,
+                stockName = rowTds[3].FindElement(By.TagName("a")).Text,
+                isBuy = rowTds[4].Text.Contains("买"),
+                orderCount = ConvertUtil.SafeParse<int>(rowTds[5].Text),
+                status = rowTds[6].Text,
+                orderPrice = ConvertUtil.SafeParse<float>(rowTds[7].Text),
+                dealCount = ConvertUtil.SafeParse<int>(rowTds[8].Text),
+                dealMoney = ConvertUtil.SafeParse<float>(rowTds[9].Text),
+                dealPrice = ConvertUtil.SafeParse<float>(rowTds[10].Text),
+                id = ConvertUtil.SafeParse<int>(rowTds[11].Text),
             });
         }
         LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.RevokeUpdate, m_revokeInfo);
@@ -544,8 +570,8 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     private void ShutDownUpdateTask()
     {
-        m_positionUpdateTaskCancellation.Cancel();
-        m_revokeUpdateTaskCancellation.Cancel();
+        m_positionUpdateTaskCancellation = true;
+        m_revokeUpdateTaskCancellation = true;
     }
 
     public void OnStart()
@@ -606,7 +632,7 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
         return handler;
     }
 
-    [MenuItem("交易/测试POST")]
+    // [MenuItem("交易/测试POST")]
     private static void TestPost()
     {
         var cookies = Instance.m_browserBuy.GetCookies();
@@ -640,10 +666,5 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
         var responseBody = response.Content.ReadAsStringAsync().Result;
         Console.WriteLine(responseBody);
     }
-
-    [MenuItem("交易/测试POST1")]
-    private static void TestPost1()
-    {
-
-    }
 }
+

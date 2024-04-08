@@ -12,6 +12,9 @@ namespace LampyrisStockTradeSystem;
 public class HKChaseRiseTradeSubWindow : Widget
 {
     private EastMoneyPositionInfo m_positionInfo;
+
+    private EastMoneyRevokeInfo m_revokeInfo;
+
     public override string Name => "港股通交易";
 
     public override ImGuiWindowFlags windowFlags => ImGuiWindowFlags.None;
@@ -19,8 +22,8 @@ public class HKChaseRiseTradeSubWindow : Widget
     public override void OnAwake()
     {
         base.OnAwake();
-        pos = new Vector2(0, ImGui.GetIO().DisplaySize.Y - 200);
-        size = new Vector2(400, 200);
+        pos = new Vector2(0, ImGui.GetIO().DisplaySize.Y - 300);
+        size = new Vector2(600, 300);
 
         LifecycleManager.Instance.Get<EventManager>().AddEventHandler(EventType.PositionUpdate, OnPositionUpdate);
         LifecycleManager.Instance.Get<EventManager>().AddEventHandler(EventType.RevokeUpdate, OnRevokeUpdate);
@@ -40,7 +43,7 @@ public class HKChaseRiseTradeSubWindow : Widget
 
     public void OnRevokeUpdate(object[] parameters)
     {
-
+        m_revokeInfo = (EastMoneyRevokeInfo)parameters[0];
     }
 
     public override void OnAfterGUI()
@@ -49,7 +52,7 @@ public class HKChaseRiseTradeSubWindow : Widget
         if (ImGui.IsWindowCollapsed())
             pos = new Vector2(0, ImGui.GetIO().DisplaySize.Y - 50);
         else
-            pos = new Vector2(0, ImGui.GetIO().DisplaySize.Y - 230);
+            pos = new Vector2(0, ImGui.GetIO().DisplaySize.Y - 330);
     }
 
     public override void OnGUI()
@@ -109,7 +112,12 @@ public class HKChaseRiseTradeSubWindow : Widget
                                 ImGui.TableNextColumn();
                                 ImGui.Text(stockInfo.profitLose);
                                 ImGui.TableNextColumn();
-                                ImGui.Button("卖出");
+                                ImGui.PushID("StockSell" + stockInfo.stockCode);
+                                if(ImGui.Button("卖出"))
+                                {
+                                    EastMoneyTradeManager.Instance.ExecuteSellByRatio(stockInfo.stockCode, 1);
+                                }
+                                ImGui.PopID();
                             }
 
                             ImGui.EndTable();
@@ -127,40 +135,71 @@ public class HKChaseRiseTradeSubWindow : Widget
             }
             if (ImGui.CollapsingHeader("委托"))
             {
-                if (ImGui.BeginTable("HKChaseRiseSubWinOwnStock", 6))
+                if(m_revokeInfo != null)
                 {
-                    ImGui.TableSetupColumn("代码");
-                    ImGui.TableSetupColumn("名称");
-                    ImGui.TableSetupColumn("方向");
-                    ImGui.TableSetupColumn("价格");
-                    ImGui.TableSetupColumn("数量");
-                    ImGui.TableSetupColumn("");
-                    ImGui.TableHeadersRow();
-
-                    for (int i = 0; i < 20; i++)
+                    if(m_revokeInfo.stockInfos.Count > 0)
                     {
-                        ImGui.TableNextRow();
-
-                        ImGui.TableNextColumn();
-                        ImGui.Text("600000");
-                        ImGui.TableNextColumn();
-                        ImGui.Text("浦发银行");
-                        ImGui.TableNextColumn();
-                        ImGui.Text("买入");
-                        ImGui.TableNextColumn();
-                        ImGui.Text("7.00");
-                        ImGui.TableNextColumn();
-                        ImGui.Text("60000");
-                        ImGui.TableNextColumn();
-                        ImGui.PushID($"HKChaseRiseSubWinOwnStockRevoke{i}");
-                        if (ImGui.Button("撤单"))
+                        if (ImGui.BeginTable("HKChaseRiseSubWinOwnStock", 9))
                         {
-                            int a = 1;
-                        }
-                        ImGui.PopID();
-                    }
+                            ImGui.TableSetupColumn("编号");
+                            ImGui.TableSetupColumn("代码");
+                            ImGui.TableSetupColumn("名称");
+                            ImGui.TableSetupColumn("方向");
+                            ImGui.TableSetupColumn("委托价格");
+                            ImGui.TableSetupColumn("委托数量");
+                            ImGui.TableSetupColumn("成交数量");
+                            ImGui.TableSetupColumn("状态");
+                            ImGui.TableSetupColumn("");
+                            ImGui.TableHeadersRow();
 
-                    ImGui.EndTable();
+
+                            foreach (EastMoneyRevokeStockInfo stockInfo in m_revokeInfo.stockInfos)
+                            {
+                                ImGui.TableNextRow();
+
+                                ImGui.TableNextColumn();
+                                ImGui.Text(stockInfo.id.ToString());
+                                ImGui.TableNextColumn();
+                                ImGui.Text(stockInfo.stockCode);
+                                ImGui.TableNextColumn();
+                                ImGui.Text(stockInfo.stockName);
+                                ImGui.TableNextColumn();
+                                ImGui.Text(stockInfo.isBuy ? "买入" : "卖出");
+                                ImGui.TableNextColumn();
+                                ImGui.Text(stockInfo.orderPrice.ToString());
+                                ImGui.TableNextColumn();
+                                ImGui.Text(stockInfo.orderCount.ToString());
+                                ImGui.TableNextColumn();
+                                ImGui.Text(stockInfo.dealCount.ToString());
+                                ImGui.TableNextColumn();
+                                ImGui.Text(stockInfo.status);
+                                ImGui.TableNextColumn();
+                                ImGui.PushID("StockRevoke" + stockInfo.stockCode);
+                                if (ImGui.Button("撤单"))
+                                {
+                                    var info = EastMoneyTradeManager.Instance.ExecuteRevoke(stockInfo.id);
+                                    if(info != null)
+                                    {
+                                        WidgetManagement.GetWidget<MessageBox>().SetContent("撤单结果", "撤单成功");
+                                    }
+                                    else
+                                    {
+                                        WidgetManagement.GetWidget<MessageBox>().SetContent("撤单结果", "撤单失败，可能已经成交了");
+                                    }
+                                }
+                                ImGui.PopID();
+                            }
+                            ImGui.EndTable();
+                        }
+                    }
+                    else
+                    {
+                        ImGui.Text("暂无可撤单的委托");
+                    }
+                }
+                else
+                {
+                    ImGui.Text("暂无可撤单的数据");
                 }
             }
         }

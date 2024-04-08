@@ -28,6 +28,12 @@ public class AppUIStyle:SerializableSingleton<AppUIStyle>
     // 普通的白色
     public SerializableVector4 normalWhiteColor = new SerializableVector4(1.0f, 1.0f, 1.0f, 1.0f);
 
+    // 提示-黄色
+    public SerializableVector4 tipYellowColor = new SerializableVector4(1.0f, 1.0f, 0.15f, 1.0f);
+
+    // 提示-红色
+    public SerializableVector4 tipRedColor = new SerializableVector4(1.0f, 0.36f, 0.36f, 1.0f);
+
     // 涨跌颜色反转
     public bool reverseRiseFallColor = false;
 

@@ -14,7 +14,7 @@ using LampyrisStockTradeSystemInternal;
 public class HKLinkStockPortrait
 {
     // 近一年 最大涨幅
-    public float maxPercentageRecentYear;
+    public float maxPercentageRecentYear = 0.0f;
 
     // 近一年 涨幅总评分：
     // 计算公式：
@@ -24,7 +24,7 @@ public class HKLinkStockPortrait
     // i = 1
     // 比如某只股近一年涨幅在[10%,20%)的有3天，[20%,30%)的有1天，[30%,40%) 有2天
     // 则涨幅总评分: 为 1*1*3 + 2*2*1 + 3*3*2 = 3+4+18 = 25
-    public float percentageScoreRecentYear;
+    public int percentageScoreRecentYear = 0;
 }
 
 public class HKLinkStockPortraitDataUpdateAsyncOperation : AsyncOperation
@@ -87,8 +87,11 @@ public class HKLinkStockPortraitDataUpdateAsyncOperation : AsyncOperation
                             {
                                 hKLinkStockPortrait.maxPercentageRecentYear = percentage;
                             }
-
-
+                            if(percentage > 0)
+                            {
+                                int percentageScore = (int)Math.Floor(percentage / 10.0f);
+                                hKLinkStockPortrait.percentageScoreRecentYear += percentageScore * percentageScore;
+                            }
                         }
                     }
                 }
@@ -96,7 +99,7 @@ public class HKLinkStockPortraitDataUpdateAsyncOperation : AsyncOperation
                 m_dataList.Add(new SerializableKeyValuePair<string,HKLinkStockPortrait>(stockCode, hKLinkStockPortrait));
             });
 
-            m_progress = 0.1f + 0.9f * (i / stockCodeList.Count);
+            m_progress = 0.1f + 0.9f * ((float)i / stockCodeList.Count);
         }
 
         m_progress = 1.0f;
@@ -104,11 +107,11 @@ public class HKLinkStockPortraitDataUpdateAsyncOperation : AsyncOperation
 }
 
 [Serializable]
-public class HKLinkStockPortraitData:SerializableSingleton<HKLinkStockPortrait>
+public class HKLinkStockPortraitData:SerializableSingleton<HKLinkStockPortraitData>
 {
     private List<SerializableKeyValuePair<string, HKLinkStockPortrait>> m_dataList = new List<SerializableKeyValuePair<string, HKLinkStockPortrait>>();
 
-    public Dictionary<string, HKLinkStockPortrait> m_dataDict = new Dictionary<string, HKLinkStockPortrait>();
+    private Dictionary<string, HKLinkStockPortrait> m_dataDict = new Dictionary<string, HKLinkStockPortrait>();
 
     private DateTime m_recentEvaluateDate;
 
@@ -138,6 +141,10 @@ public class HKLinkStockPortraitData:SerializableSingleton<HKLinkStockPortrait>
             operation.onCompletedCallback += () =>
             {
                 m_dataList = (List<SerializableKeyValuePair<string, HKLinkStockPortrait>>)operation.result;
+                foreach (var kvp in m_dataList)
+                {
+                    m_dataDict[kvp.Key] = kvp.Value;
+                }
                 m_recentEvaluateDate = now;
             };
 
@@ -145,6 +152,29 @@ public class HKLinkStockPortraitData:SerializableSingleton<HKLinkStockPortrait>
         }
 
         return null;
+    }
+
+    [PlannedTask(mode: PlannedTaskExecuteMode.ExecuteOnLaunch)]
+    private static void RefreshHKLinkStockPortraitData()
+    {
+        var asyncOp = Instance.ReEvaluateIfNeed();
+        if(asyncOp != null)
+        {
+            var win = WidgetManagement.GetWidget<AsyncOperationProgressShowDialog>();
+            win.SetContent("港股通标的股性评分计算", "正在重新计算港股通标的股性评分计算...请稍等...");
+            win.SetAsyncOperation(asyncOp);
+        }
+    }
+
+    public (float,int) QueryRecentYearData(string stockCode)
+    {
+        if (m_dataDict.ContainsKey(stockCode))
+        {
+            var data = m_dataDict[stockCode];
+            return (data.maxPercentageRecentYear, data.percentageScoreRecentYear);
+        }
+
+        return (0.0f, 0);
     }
 }
 
