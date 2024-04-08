@@ -343,7 +343,7 @@ public class HKChaseRiseWindow:Widget
 
                     string name = quoteData.quoteData.code + " " +
                                   quoteData.quoteData.name;
-w
+
                     string displayInfo = "现价:" + quoteData.quoteData.realTimeQuoteData.kLineData.closePrice + "\n" +
                                          "涨幅:" + quoteData.quoteData.realTimeQuoteData.kLineData.percentage + "%%\n" +
                                          "涨速:" + ((StockRealTimeQuoteData)(quoteData.quoteData.realTimeQuoteData)).riseSpeed + "%%\n" +
