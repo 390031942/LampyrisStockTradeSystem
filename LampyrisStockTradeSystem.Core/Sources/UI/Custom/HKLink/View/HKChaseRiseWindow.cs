@@ -314,7 +314,7 @@ public class HKChaseRiseWindow:Widget
                     // 设置默认选中的项
                     if (isSelected)
                     {
-                        ImGui.SetItemDefaultFocus();4
+                        ImGui.SetItemDefaultFocus();
                     }
                 }
                 ImGui.EndCombo();
