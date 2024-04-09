@@ -4,6 +4,7 @@
 ** Description: 东方财富通交易管理器
 */
 using OpenQA.Selenium;
+using OpenTK.Compute.OpenCL;
 using System.Collections.ObjectModel;
 using System.Net;
 using System.Net.Http.Headers;
@@ -124,6 +125,9 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     public bool isLoggedIn => m_isLoggedIn;
 
+    // 请求参数的validateKey
+    private string m_validateKey;
+
     // 持仓更新 任务控制
     private bool m_positionUpdateTaskCancellation;
 
@@ -146,11 +150,9 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
     {
         m_positionUpdateTaskCancellation = false;
         m_revokeUpdateTaskCancellation = false;
+        m_validateKey = m_browserLogin.GetWebElement(By.Id("em_validateKey")).Text;
 
         WidgetManagement.GetWidget<EastMoneyTradeLoginWindow>().isOpened = false;
-
-        MessageBox msgBox = (MessageBox)WidgetManagement.GetWidget<MessageBox>();
-        msgBox.SetContent("交易登录", "登陆成功，准备吃巨肉");
 
         var cookies = Instance.m_browserLogin.GetCookies();
         m_httpClient = new HttpClient(UseHttpClientWithCookies(cookies));
@@ -166,37 +168,8 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
         m_httpClient.DefaultRequestHeaders.Add("gw_reqtimestamp", "1712479062234");
         // m_httpClient.DefaultRequestHeaders.Referrer = new Uri("https://jywg.18.cn/Search/GetHisOrdersData");
 
-        // 持仓更新 任务
-        Task.Run(async () =>
-        {
-            while (!m_positionUpdateTaskCancellation)
-            {
-                try
-                {
-                    HandlePositionUpdate();
-                }
-                catch (Exception ex) { }
-                await Task.Delay(900);
-            }
-        });
-
-        // 撤单更新 任务
-        Task.Run(async () =>
-        {
-            while (!m_revokeUpdateTaskCancellation)
-            {
-
-                if (!m_shouldPauseRevokeUpdate)
-                {
-                    try
-                    {
-                        HandleRevokeUpdate();
-                    }
-                    catch (Exception ex) { }
-                }
-                await Task.Delay(900);
-            }
-        });
+        HandlePositionUpdate();
+        HandleRevokeUpdate();
 
         // 三小时后登陆失效,10800000 = 3 * 3600 * 1000ms 
         CallTimer.Instance.SetInterval(() =>
@@ -248,7 +221,24 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     public void ExecuteBuyByRatio(string code, int ratio)
     {
-        
+        // 卖三
+        float price = 0;
+        float amount = 0;
+
+        // 获取档位数据
+
+        // 获取最大可买数量
+        {
+            var requestBody = new StringContent($"https://jywg.18.cn/HKTrade/GetMaxTradeCount?validateKey={m_validateKey}", Encoding.UTF8, "application/x-www-form-urlencoded");
+
+            // 发送POST请求
+            var response = m_httpClient.PostAsync("https://jywg.18.cn/Search/GetHisOrdersData", requestBody).Result;
+
+            // 确保请求成功
+            response.EnsureSuccessStatusCode();
+
+        }
+   
     }
 
     public void ExecuteBuyByCount(string code, int count)
