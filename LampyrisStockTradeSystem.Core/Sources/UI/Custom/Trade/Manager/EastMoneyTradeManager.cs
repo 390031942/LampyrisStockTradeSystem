@@ -3,10 +3,12 @@
 ** Contact: gameta@qq.com
 ** Description: 东方财富通交易管理器
 */
+using Newtonsoft.Json.Linq;
 using OpenQA.Selenium;
 using OpenTK.Compute.OpenCL;
 using System.Collections.ObjectModel;
 using System.Net;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 
@@ -51,6 +53,93 @@ public enum EastMoneyTradeFunctionType
     HistoryOrder = 6, // 历史委托
     HistoryDeal = 7, // 历史成交
     Count = 8, 
+}
+
+public enum EastMonsterTradeWaitTaskStatus
+{
+    Done = 0,
+    NotReady = 1,
+    Failed = 2,
+}
+
+public interface IEastMonsterTradeWaitTask
+{
+    public EastMonsterTradeWaitTaskStatus GetStatus();
+
+    public void Execute();
+}
+
+public class EastMonsterTradeHKLinkBuyWaitTask : IEastMonsterTradeWaitTask
+{
+    private string m_code;
+    private int m_ratio;
+
+    // 查询买卖五档，最大可买，最小股数
+    private Task<HttpResponseMessage> m_queryAskBidTask;
+    private Task<HttpResponseMessage> m_queryMaxCanBuy;
+    private Task<HttpResponseMessage> m_queryMinUnit;
+
+    public EastMonsterTradeHKLinkBuyWaitTask(string code,int ratio,
+                                             Task<HttpResponseMessage> queryAskBidTask, 
+                                             Task<HttpResponseMessage> queryMaxCanBuy, 
+                                             Task<HttpResponseMessage> queryMinUnit)
+    {
+        m_code = code;
+        m_ratio = ratio;
+        m_queryAskBidTask = queryAskBidTask;
+        m_queryMaxCanBuy = queryMaxCanBuy;
+        m_queryMinUnit = queryMinUnit;
+    }
+
+    public void Execute()
+    {
+        try
+        {
+            m_queryAskBidTask.Result.EnsureSuccessStatusCode();
+            m_queryMaxCanBuy.Result.EnsureSuccessStatusCode();
+            m_queryMinUnit.Result.EnsureSuccessStatusCode();
+
+            string askBidResultJson = m_queryAskBidTask.Result.Content.ReadAsStringAsync().Result;
+            string canBuyResultJson = m_queryMaxCanBuy.Result.Content.ReadAsStringAsync().Result;
+            string minUnitResultJson = m_queryMinUnit.Result.Content.ReadAsStringAsync().Result;
+
+            string askBidResultStrippedJson = JsonStripperUtil.GetEastMoneyStrippedJson(askBidResultJson);
+            float price = JObject.Parse(askBidResultStrippedJson)["fivequote"]["buy" + AppSettings.Instance.bidLevel].SafeToObject<float>();
+            float money = JObject.Parse(canBuyResultJson)["Data"][0]["AvailableMoney"].SafeToObject<float>();
+            int minUnit = JObject.Parse(minUnitResultJson)["Data"][0]["Szxdw"].SafeToObject<int>();
+
+            float count = (money / price) / m_ratio;
+            int shouldBuyUnitCount = (int)Math.Floor(count / minUnit) * minUnit;
+
+            var validateKey = EastMoneyTradeManager.Instance.validateKey;
+            var httpClient = EastMoneyTradeManager.Instance.httpClient;
+
+            var url = "https://jywg.18.cn/HKTrade/SubmitTrade?validateKey={validateKey}";
+            var requestBody = new StringContent($"stockCode={m_code}&price={price}&amount={shouldBuyUnitCount}&tradeType=3B", Encoding.UTF8, "application/x-www-form-urlencoded");
+            var response = httpClient.PostAsync(url, requestBody).Result;
+            response.EnsureSuccessStatusCode();
+
+            var resultStr = response.Content.ReadAsStringAsync().Result;
+
+            WidgetManagement.GetWidget<MessageBox>().SetContent("买入结果提示", "委托成功");
+        }
+        catch (Exception ex)
+        {
+            WidgetManagement.GetWidget<MessageBox>().SetContent("买入结果提示", "报错了:" + ex.ToString());
+        }
+    }
+
+    public EastMonsterTradeWaitTaskStatus GetStatus()
+    {
+        if (m_queryAskBidTask == null || m_queryMaxCanBuy == null || m_queryMinUnit == null)
+            return EastMonsterTradeWaitTaskStatus.Failed;
+
+        if(m_queryAskBidTask.Exception != null || m_queryMaxCanBuy.Exception != null || m_queryMinUnit.Exception != null)
+            return EastMonsterTradeWaitTaskStatus.Failed;
+
+        return (m_queryAskBidTask.IsCompleted && m_queryMaxCanBuy.IsCompleted && m_queryMinUnit.IsCompleted) ? 
+            EastMonsterTradeWaitTaskStatus.Done : EastMonsterTradeWaitTaskStatus.NotReady;
+    }
 }
 
 // 不同EastMoneyTradeMode下，不同的交易功能 有不同的请求url，这里用一个字典保存
@@ -115,6 +204,8 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     private HttpClient m_httpClient = new HttpClient();
 
+    public HttpClient httpClient => m_httpClient;
+
     // 是不是初始化浏览器
     private bool m_isInit = false;
 
@@ -127,6 +218,8 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     // 请求参数的validateKey
     private string m_validateKey;
+
+    public string validateKey => m_validateKey;
 
     // 持仓更新 任务控制
     private bool m_positionUpdateTaskCancellation;
@@ -146,16 +239,19 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     private Queue<EastMoneyCircularOrderInfo> m_circularOrderQueue = new Queue<EastMoneyCircularOrderInfo>();
 
-    private void DoSomethingAfterLoginSuccess()
+    private List<IEastMonsterTradeWaitTask> m_tradeWaitTask = new List<IEastMonsterTradeWaitTask>();
+
+    private List<IEastMonsterTradeWaitTask> m_needRemoveTaskList = new List<IEastMonsterTradeWaitTask>();
+
+    private void OnLoginSuccess(bool withSerializedCookie = false)
     {
         m_positionUpdateTaskCancellation = false;
         m_revokeUpdateTaskCancellation = false;
-        m_validateKey = m_browserLogin.GetWebElement(By.Id("em_validateKey")).Text;
-
+        m_validateKey = m_browserLogin.GetWebElement(By.CssSelector("input[type='hidden']")).GetAttribute("value");
         WidgetManagement.GetWidget<EastMoneyTradeLoginWindow>().isOpened = false;
 
-        var cookies = Instance.m_browserLogin.GetCookies();
-        m_httpClient = new HttpClient(UseHttpClientWithCookies(cookies));
+        var cookies = m_browserLogin.GetCookies();
+        m_httpClient = new HttpClient(CookieUtil.UseHttpClientWithSeleniumCookies(cookies));
         m_httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         m_httpClient.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("zh-CN"));
         m_httpClient.DefaultRequestHeaders.Add("sec-ch-ua", "\"Google Chrome\";v=\"123\", \"Not:A-Brand\";v=\"8\", \"Chromium\";v=\"123\"");
@@ -166,10 +262,12 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
         m_httpClient.DefaultRequestHeaders.Add("sec-fetch-site", "same-origin");
         m_httpClient.DefaultRequestHeaders.Add("x-requested-with", "XMLHttpRequest");
         m_httpClient.DefaultRequestHeaders.Add("gw_reqtimestamp", "1712479062234");
-        // m_httpClient.DefaultRequestHeaders.Referrer = new Uri("https://jywg.18.cn/Search/GetHisOrdersData");
+        m_httpClient.DefaultRequestHeaders.Referrer = new Uri("https://jywg.18.cn/HKTrade/HKBuy");
 
-        HandlePositionUpdate();
-        HandleRevokeUpdate();
+        m_browserLogin.Close();
+
+        // HandlePositionUpdate();
+        // HandleRevokeUpdate();
 
         // 三小时后登陆失效,10800000 = 3 * 3600 * 1000ms 
         CallTimer.Instance.SetInterval(() =>
@@ -184,6 +282,8 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
         // 记录登陆状态
         m_isLoggedIn = true;
         LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.LoginStateChanged, true);
+
+        WidgetManagement.GetWidget<MessageBox>().SetContent("交易系统提醒", "登陆成功，准备吃巨面!");
     }
 
     private void RequestTradeUrl()
@@ -197,6 +297,13 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
     [MenuItem("交易/登录")]
     public static void Login()
     {
+        // TODO:检查登录Cookie是否过时
+        // if (CookieManager.Instance.HasValidCookie(CookieType.EastMoneyTrade))
+        // {
+        //     Instance.m_httpClient = CookieManager.Instance.GetHttpClientWithCookieType(CookieType.EastMoneyTrade);
+        //     return;
+        // }
+
         if (!Instance.isInit)
         {
             Instance.m_browserLogin.Init();
@@ -221,24 +328,19 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     public void ExecuteBuyByRatio(string code, int ratio)
     {
-        // 卖三
-        float price = 0;
-        float amount = 0;
+        // 请求买卖五档行情
+        var urlAskBid = $"https://hkmarketzp.eastmoney.com/api/HKQuoteSnapshot?id=HK|{code}&auth=5&type=1&DC_APP_KEY=dcquotes-service-tweb&DC_TIMESTAMP=1712677182450&DC_SIGN=3C8A0614551E0CC5BF6185D5ACCFA030&callback=jQuery18307597280834087143_1712677174833&_=1712677182450";
+        var maxCanBuy = $"https://jywg.18.cn/HKTrade/GetHKTradeTip?validatekey={m_validateKey}";
+        var minUnit = $"https://jywg.18.cn/Com/GetZqInfo?validatekey={m_validateKey}";
 
-        // 获取档位数据
+        var minUnitContent = new StringContent($"zqdm={code}&market=5", Encoding.UTF8, "application/x-www-form-urlencoded");
 
-        // 获取最大可买数量
-        {
-            var requestBody = new StringContent($"https://jywg.18.cn/HKTrade/GetMaxTradeCount?validateKey={m_validateKey}", Encoding.UTF8, "application/x-www-form-urlencoded");
+        var waitTask = new EastMonsterTradeHKLinkBuyWaitTask(code,ratio,
+                                                             m_httpClient.GetAsync(urlAskBid), 
+                                                             m_httpClient.PostAsync(maxCanBuy, null), 
+                                                             m_httpClient.PostAsync(minUnit, minUnitContent));
 
-            // 发送POST请求
-            var response = m_httpClient.PostAsync("https://jywg.18.cn/Search/GetHisOrdersData", requestBody).Result;
-
-            // 确保请求成功
-            response.EnsureSuccessStatusCode();
-
-        }
-   
+        m_tradeWaitTask.Add(waitTask);
     }
 
     public void ExecuteBuyByCount(string code, int count)
@@ -292,12 +394,12 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
                 }
                 else
                 {
-                    DoSomethingAfterLoginSuccess();
+                    OnLoginSuccess();
                 }
             }
             else
             {
-                DoSomethingAfterLoginSuccess();
+                OnLoginSuccess();
             }
         }
         catch (Exception ex)
@@ -329,6 +431,29 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     public void OnUpdate(float dTime)
     {
+        m_needRemoveTaskList.Clear();
+        for (int i = 0; i < m_tradeWaitTask.Count;i++)
+        {
+            IEastMonsterTradeWaitTask waitTask = m_tradeWaitTask[i];
+            EastMonsterTradeWaitTaskStatus status = waitTask.GetStatus();
+            if(status == EastMonsterTradeWaitTaskStatus.Done)
+            {
+                waitTask.Execute();
+                m_needRemoveTaskList.Add(waitTask);
+            }
+            else if (status == EastMonsterTradeWaitTaskStatus.NotReady)
+            {
+                continue;
+            }
+            else if (status == EastMonsterTradeWaitTaskStatus.Failed)
+            {
+                // 报错
+                m_needRemoveTaskList.Add(waitTask);
+            }
+        }
+
+        foreach(var task in m_needRemoveTaskList) { m_tradeWaitTask.Remove(task); }
+
         // 处理循环申报
         while (m_circularOrderQueue.TryDequeue(out var orderInfo))
         {
@@ -352,68 +477,6 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
     public void OnDestroy()
     {
 
-    }
-
-    // 将Selenium的Cookie设置到HttpClientHandler里，供HttpClient使用
-    private static HttpClientHandler UseHttpClientWithCookies(ReadOnlyCollection<OpenQA.Selenium.Cookie> seleniumCookies)
-    {
-        var handler = new HttpClientHandler();
-
-        var cookieContainer = new CookieContainer();
-        handler.CookieContainer = cookieContainer;
-
-        // 转换Cookies并添加到CookieContainer中
-        foreach (var seleniumCookie in seleniumCookies)
-        {
-            System.Net.Cookie cookie = new System.Net.Cookie
-            {
-                Name = seleniumCookie.Name,
-                Value = seleniumCookie.Value,
-                Domain = seleniumCookie.Domain,
-                Path = seleniumCookie.Path,
-                Expires = seleniumCookie.Expiry.GetValueOrDefault(DateTime.Now.AddYears(1)), // 设置一个默认的过期时间
-                Secure = seleniumCookie.Secure,
-                HttpOnly = seleniumCookie.IsHttpOnly
-            };
-            cookieContainer.Add(cookie);
-        }
-
-        return handler;
-    }
-
-    // [MenuItem("交易/测试POST")]
-    private static void TestPost()
-    {
-        var cookies = Instance.m_browserLogin.GetCookies();
-        Instance.m_httpClient = new HttpClient(UseHttpClientWithCookies(cookies));
-        var url = "https://jywg.18.cn/Search/Position";
-
-        var client = Instance.m_httpClient;
-
-        client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        client.DefaultRequestHeaders.AcceptLanguage.Add(new StringWithQualityHeaderValue("zh-CN"));
-        client.DefaultRequestHeaders.Add("sec-ch-ua", "\"Google Chrome\";v=\"123\", \"Not:A-Brand\";v=\"8\", \"Chromium\";v=\"123\"");
-        client.DefaultRequestHeaders.Add("sec-ch-ua-mobile", "?0");
-        client.DefaultRequestHeaders.Add("sec-ch-ua-platform", "\"Windows\"");
-        client.DefaultRequestHeaders.Add("sec-fetch-dest", "empty");
-        client.DefaultRequestHeaders.Add("sec-fetch-mode", "cors");
-        client.DefaultRequestHeaders.Add("sec-fetch-site", "same-origin");
-        client.DefaultRequestHeaders.Add("x-requested-with", "XMLHttpRequest");
-        client.DefaultRequestHeaders.Add("gw_reqtimestamp", "1712479062234");
-        client.DefaultRequestHeaders.Referrer = new Uri("https://jywg.18.cn/Search/GetHisOrdersData");
-
-        // 设置请求的Body
-        var requestBody = new StringContent("st=2024-03-31&et=2024-04-07&qqhs=20&dwc=", Encoding.UTF8, "application/x-www-form-urlencoded");
-
-        // 发送POST请求
-        var response = client.PostAsync("https://jywg.18.cn/Search/GetHisOrdersData", requestBody).Result;
-
-        // 确保请求成功
-        response.EnsureSuccessStatusCode();
-
-        // 读取并打印返回的结果
-        var responseBody = response.Content.ReadAsStringAsync().Result;
-        Console.WriteLine(responseBody);
     }
 }
 
