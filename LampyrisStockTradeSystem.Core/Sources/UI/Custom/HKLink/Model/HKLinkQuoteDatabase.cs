@@ -161,7 +161,7 @@ public class HKLinkStockPortraitData:SerializableSingleton<HKLinkStockPortraitDa
         if(asyncOp != null)
         {
             var win = WidgetManagement.GetWidget<AsyncOperationProgressShowDialog>();
-            win.SetContent("港股通标的股性评分计算", "正在重新计算港股通标的股性评分计算...请稍等...");
+            win.SetContent("港股通标的股性评分计算", "正在重新计算港股通标的股性评分...请稍等...");
             win.SetAsyncOperation(asyncOp);
         }
     }
