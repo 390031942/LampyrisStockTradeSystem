@@ -35,6 +35,8 @@ public class HKChaseRiseQuoteData
     public bool displayingToday = true;
 
     public int lastUnusualTimestamp = -1;
+
+    public string lastUnusualTime;
 }
 
 public enum HKStockUnusualStrategy

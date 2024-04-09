@@ -114,14 +114,14 @@ public class EastMonsterTradeHKLinkBuyWaitTask : IEastMonsterTradeWaitTask
             var validateKey = EastMoneyTradeManager.Instance.validateKey;
             var httpClient = EastMoneyTradeManager.Instance.httpClient;
 
-            var url = "https://jywg.18.cn/HKTrade/SubmitTrade?validateKey={validateKey}";
+            var url = $"https://jywg.18.cn/HKTrade/SubmitTrade?validateKey={validateKey}";
             var requestBody = new StringContent($"stockCode={m_code}&price={price}&amount={shouldBuyUnitCount}&tradeType=3B", Encoding.UTF8, "application/x-www-form-urlencoded");
             var response = httpClient.PostAsync(url, requestBody).Result;
             response.EnsureSuccessStatusCode();
 
             var resultStr = response.Content.ReadAsStringAsync().Result;
 
-            WidgetManagement.GetWidget<MessageBox>().SetContent("买入结果提示", "委托成功");
+            WidgetManagement.GetWidget<MessageBox>().SetContent("买入结果提示", resultStr);
         }
         catch (Exception ex)
         {
@@ -329,7 +329,7 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
     public void ExecuteBuyByRatio(string code, int ratio)
     {
         // 请求买卖五档行情
-        var urlAskBid = $"https://hkmarketzp.eastmoney.com/api/HKQuoteSnapshot?id=HK|{code}&auth=5&type=1&DC_APP_KEY=dcquotes-service-tweb&DC_TIMESTAMP=1712677182450&DC_SIGN=3C8A0614551E0CC5BF6185D5ACCFA030&callback=jQuery18307597280834087143_1712677174833&_=1712677182450";
+        var urlAskBid = $"https://hkmarketzp.eastmoney.com/api/HKQuoteSnapshot?id=HK|{code}&auth=5&type=1&DC_APP_KEY=dcquotes-service-tweb&DC_TIMESTAMP=1712677182450&DC_SIGN=3C8A0614551E0CC5BF6185D5ACCFA030&callback={AppConfig.jQueryString}&_=1712677182450";
         var maxCanBuy = $"https://jywg.18.cn/HKTrade/GetHKTradeTip?validatekey={m_validateKey}";
         var minUnit = $"https://jywg.18.cn/Com/GetZqInfo?validatekey={m_validateKey}";
 

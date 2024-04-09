@@ -18,7 +18,7 @@ public static class ImGUIUtil
 
         var lineHeight = ImGui.GetFrameHeight();
         // 绘制竖直分隔线
-        ImGui.GetWindowDrawList().AddLine(new Vector2(cursorPos.X, cursorPos.Y),
+        ImGui.GetWindowDrawList().AddRect(new Vector2(cursorPos.X, cursorPos.Y),
                                           new Vector2(cursorPos.X + 1, cursorPos.Y + lineHeight),
                                           ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f))); // 使用当前ImGui主题的按钮颜色
         ImGui.SameLine();
