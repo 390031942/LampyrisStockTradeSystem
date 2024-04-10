@@ -141,6 +141,7 @@ public class HKChaseRiseWindow : Widget
                             return (int)(b.quoteData.realTimeQuoteData.kLineData.money - a.quoteData.realTimeQuoteData.kLineData.money);
                         });
 
+                        bool hasNew = false;
                         for (int i = 0; i < m_hkStockList.Count; i++)
                         {
                             m_hkStockList[i].moneyRank = Math.Round((double)i / m_hkStockList.Count, 2);
@@ -185,9 +186,15 @@ public class HKChaseRiseWindow : Widget
                                         m_stockCode2DisplayingDataIndex[stockData.quoteData.code] = m_displayingStockData.Count - 1;
                                         stockData.lastUnusualTimestamp = ms;
                                         stockData.lastUnusualTime = DateTime.Now.ToString("hh:mm:ss");
+                                        hasNew = true;
                                     }
                                 }
                             }
+                        }
+
+                        if(hasNew)
+                        {
+                            SystemTrayIcon.Instance.ShowMessage("有新的拉鸡");
                         }
                     }
                 }
