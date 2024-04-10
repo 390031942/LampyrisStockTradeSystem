@@ -120,8 +120,18 @@ public class EastMonsterTradeHKLinkBuyWaitTask : IEastMonsterTradeWaitTask
             response.EnsureSuccessStatusCode();
 
             var resultStr = response.Content.ReadAsStringAsync().Result;
+            var resultJson = JObject.Parse(resultStr);
+            var resultStatus = resultJson["Status"].SafeToObject<int>();
+            var resuleMessage = resultJson["Message"].SafeToObject<int>();
 
-            WidgetManagement.GetWidget<MessageBox>().SetContent("买入结果提示", resultStr);
+            if (resultStatus == 0)
+            {
+                WidgetManagement.GetWidget<MessageBox>().SetContent("买入结果提示", $"委托成功，委托编号:{resultJson["Data"][0]["wtbh"]}");
+            }
+            else
+            {
+                WidgetManagement.GetWidget<MessageBox>().SetContent("买入结果提示", resultStr);
+            }
         }
         catch (Exception ex)
         {
