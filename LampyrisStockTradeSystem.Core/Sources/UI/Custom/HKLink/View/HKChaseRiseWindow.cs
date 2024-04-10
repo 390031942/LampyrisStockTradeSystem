@@ -153,31 +153,53 @@ public class HKChaseRiseWindow : Widget
                                 StockRealTimeQuoteData realTimeQuoteData = (StockRealTimeQuoteData)(stockData.quoteData.realTimeQuoteData);
 
                                 bool satisfield = false;
-                                switch ((HKStockUnusualStrategy)AppSettings.Instance.unusualStrategy)
+                                bool satisfieldTotal = false;
+
+
+                                if ((AppSettings.Instance.unusualStrategy & (1 << (int)HKStockUnusualStrategy.RiseSpeedNormal)) != 0)
                                 {
-                                    case HKStockUnusualStrategy.RiseSpeedNormal:
-                                        satisfield = ((realTimeQuoteData.kLineData.closePrice > 1.5f ? (realTimeQuoteData.riseSpeed > 1.5f) : (realTimeQuoteData.riseSpeed > 2.0f)));
-                                        satisfield &= stockData.moneyRank < 0.5f;
-                                        break;
-                                    case HKStockUnusualStrategy.RiseSpeedEx:
-                                        satisfield = (realTimeQuoteData.riseSpeed > 5f);
-                                        break;
-                                    case HKStockUnusualStrategy.FallSpeed:
-                                        satisfield = (realTimeQuoteData.riseSpeed < -5f);
-                                        break;
-                                    case HKStockUnusualStrategy.Breakthrough: break;
-                                    case HKStockUnusualStrategy.RisePercentage:
-                                        satisfield = (realTimeQuoteData.kLineData.percentage) > 10.0f;
-                                        break;
-                                    case HKStockUnusualStrategy.FallPercentage:
-                                        satisfield = (realTimeQuoteData.kLineData.percentage) < -10.0f;
-                                        break;
-                                    case HKStockUnusualStrategy.RiseSpeedTest:
-                                        satisfield = (realTimeQuoteData.riseSpeed > 1.5f);
-                                        break;
+                                    satisfield = ((realTimeQuoteData.kLineData.closePrice > 1.5f ? (realTimeQuoteData.riseSpeed > 1.5f) : (realTimeQuoteData.riseSpeed > 2.0f)));
+                                    satisfield &= stockData.moneyRank < 0.5f;
+                                    satisfieldTotal |= satisfield;
                                 }
 
-                                if (satisfield)
+                                if ((AppSettings.Instance.unusualStrategy & (1 << (int)HKStockUnusualStrategy.RiseSpeedEx)) != 0)
+                                {
+                                    satisfield = (realTimeQuoteData.riseSpeed > 5f);
+                                    satisfieldTotal |= satisfield;
+                                }
+
+                                if ((AppSettings.Instance.unusualStrategy & (1 << (int)HKStockUnusualStrategy.FallSpeed)) != 0)
+                                {
+                                    satisfield = (realTimeQuoteData.riseSpeed < -5f);
+                                    satisfieldTotal |= satisfield;
+                                }
+
+                                if ((AppSettings.Instance.unusualStrategy & (1 << (int)HKStockUnusualStrategy.Breakthrough)) != 0)
+                                {
+                  
+                                }
+
+                                if ((AppSettings.Instance.unusualStrategy & (1 << (int)HKStockUnusualStrategy.RisePercentage)) != 0)
+                                {
+                                    satisfield = (realTimeQuoteData.kLineData.percentage) > 10.0f;
+                                    satisfieldTotal |= satisfield;
+                                }
+
+                                if ((AppSettings.Instance.unusualStrategy & (1 << (int)HKStockUnusualStrategy.FallPercentage)) != 0)
+                                {
+                                    satisfield = (realTimeQuoteData.kLineData.percentage) < -10.0f;
+                                    satisfieldTotal |= satisfield;
+                                }
+
+
+                                if ((AppSettings.Instance.unusualStrategy & (1 << (int)HKStockUnusualStrategy.RiseSpeedTest)) != 0)
+                                {
+                                    satisfield = (realTimeQuoteData.riseSpeed > 1.5f);
+                                    satisfieldTotal |= satisfield;
+                                }
+
+                                if (satisfieldTotal)
                                 {
                                     int ms = DateTime.Now.Millisecond;
                                     if (ms - stockData.lastUnusualTimestamp > 300 * 1000 || stockData.lastUnusualTimestamp <= 0)
@@ -248,18 +270,18 @@ public class HKChaseRiseWindow : Widget
                 ImGui.SameLine();
             }
 
-            ImGui.BeginDisabled();
-            ImGui.Text("成交剩余策略");
-            ImGui.SameLine();
-            for (int i = 1; i <= (int)TradeOrderLeftStrategy.Count; i++)
-            {
-                if (ImGui.RadioButton(EnumNameManager.GetName((TradeOrderLeftStrategy)(i)), m_tradeOrderLeftStrategy == i))
-                {
-                    m_tradeOrderLeftStrategy = i;
-                }
-                ImGui.SameLine();
-            }
-            ImGui.EndDisabled();
+            // ImGui.BeginDisabled();
+            // ImGui.Text("成交剩余策略");
+            // ImGui.SameLine();
+            // for (int i = 1; i <= (int)TradeOrderLeftStrategy.Count; i++)
+            // {
+            //     if (ImGui.RadioButton(EnumNameManager.GetName((TradeOrderLeftStrategy)(i)), m_tradeOrderLeftStrategy == i))
+            //     {
+            //         m_tradeOrderLeftStrategy = i;
+            //     }
+            //     ImGui.SameLine();
+            // }
+            // ImGui.EndDisabled();
 
             // 筛选策略
             // ImGui.Text()
@@ -301,12 +323,6 @@ public class HKChaseRiseWindow : Widget
                     {
                         m_askLevel = i;
                     }
-
-                    // 设置默认选中的项
-                    if (isSelected)
-                    {
-                        ImGui.SetItemDefaultFocus();
-                    }
                 }
                 ImGui.EndCombo();
             }
@@ -317,32 +333,34 @@ public class HKChaseRiseWindow : Widget
 
             ImGui.SetNextItemWidth(450);
 
-            if (ImGui.BeginCombo("##HKCheaseRiseWindowUnusualStrategy", EnumNameManager.GetName((HKStockUnusualStrategy)m_unusualStrategy)))
+            string displayName = EnumNameManager.GetName((HKStockUnusualStrategy)m_unusualStrategy);
+            if (ImGui.BeginCombo("##HKCheaseRiseWindowUnusualStrategy", displayName))
             {
+                int value = 0;
                 for (int i = 1; i <= (int)HKStockUnusualStrategy.Count; i++)
                 {
-                    bool isSelected = (m_unusualStrategy == i);
-                    if (ImGui.Selectable(EnumNameManager.GetName((HKStockUnusualStrategy)i), isSelected))
+                    bool isSelected = (m_unusualStrategy & (1 << i)) != 0;
+                    if (ImGui.Checkbox(EnumNameManager.GetName((HKStockUnusualStrategy)i), ref isSelected))
                     {
-                        m_unusualStrategy = i;
-                        if (i != m_unusualStrategyPrevious)
-                        {
-                            m_displayingStockData.Clear();
-                            m_stockCode2DisplayingDataIndex.Clear();
-                            m_unusualStrategyPrevious = i;
-                            foreach(var stockData in m_code2stockData.Values)
-                            {
-                                stockData.lastUnusualTimestamp = -1;
-                            }
-                            HKChaseRiseWindow.RefreshHKStockQuote();
-                        }
                     }
 
-                    // 设置默认选中的项
-                    if (isSelected)
+                    if(isSelected)
                     {
-                        ImGui.SetItemDefaultFocus();
+                        value |= (1 << i);
                     }
+                }
+
+                m_unusualStrategy = value;
+                if (value != m_unusualStrategyPrevious)
+                {
+                    m_displayingStockData.Clear();
+                    m_stockCode2DisplayingDataIndex.Clear();
+                    m_unusualStrategyPrevious = value;
+                    foreach (var stockData in m_code2stockData.Values)
+                    {
+                        stockData.lastUnusualTimestamp = -1;
+                    }
+                    HKChaseRiseWindow.RefreshHKStockQuote();
                 }
                 ImGui.EndCombo();
             }
@@ -368,7 +386,7 @@ public class HKChaseRiseWindow : Widget
 
                     (float percentage, int score) = HKLinkStockPortraitData.Instance.QueryRecentYearData(quoteData.quoteData.code);
 
-                    string name = (i + 1) + ") " +
+                    string name = (m_displayingStockData.Count - i) + ") " +
                                   quoteData.quoteData.code + " " +
                                   quoteData.quoteData.name;
 
@@ -392,7 +410,6 @@ public class HKChaseRiseWindow : Widget
                     ImGui.Text(displayInfo); // 显示股票名称
 
                     ImGui.TableNextColumn();
-
                     // 分时图
                     // if (quoteData.displayingToday)
                     {
