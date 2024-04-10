@@ -104,7 +104,7 @@ public class EastMonsterTradeHKLinkBuyWaitTask : IEastMonsterTradeWaitTask
             string minUnitResultJson = m_queryMinUnit.Result.Content.ReadAsStringAsync().Result;
 
             string askBidResultStrippedJson = JsonStripperUtil.GetEastMoneyStrippedJson(askBidResultJson);
-            float price = JObject.Parse(askBidResultStrippedJson)["fivequote"]["buy" + AppSettings.Instance.bidLevel].SafeToObject<float>();
+            float price = JObject.Parse(askBidResultStrippedJson)["fivequote"]["sell" + AppSettings.Instance.bidLevel].SafeToObject<float>();
             float money = JObject.Parse(canBuyResultJson)["Data"][0]["AvailableMoney"].SafeToObject<float>();
             int minUnit = JObject.Parse(minUnitResultJson)["Data"][0]["Szxdw"].SafeToObject<int>();
 
