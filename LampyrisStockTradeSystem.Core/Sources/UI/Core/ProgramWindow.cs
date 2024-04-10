@@ -27,8 +27,8 @@ public static class ProgramWindowDebugger
         string messageString = Marshal.PtrToStringAnsi(message, length);
         Console.WriteLine($"{severity} {type} | {messageString}");
 
-        if (type == DebugType.DebugTypeError)
-            throw new Exception(messageString);
+        // if (type == DebugType.DebugTypeError)
+        //     throw new Exception(messageString);
     }
 }
 
