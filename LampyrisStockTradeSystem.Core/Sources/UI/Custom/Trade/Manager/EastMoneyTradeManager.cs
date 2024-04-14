@@ -104,7 +104,7 @@ public class EastMonsterTradeHKLinkBuyWaitTask : IEastMonsterTradeWaitTask
             string minUnitResultJson = m_queryMinUnit.Result.Content.ReadAsStringAsync().Result;
 
             string askBidResultStrippedJson = JsonStripperUtil.GetEastMoneyStrippedJson(askBidResultJson);
-            float price = JObject.Parse(askBidResultStrippedJson)["fivequote"]["sell" + AppSettings.Instance.bidLevel].SafeToObject<float>();
+            float price = JObject.Parse(askBidResultStrippedJson)["fivequote"]["sale" + AppSettings.Instance.bidLevel].SafeToObject<float>();
             float money = JObject.Parse(canBuyResultJson)["Data"][0]["AvailableMoney"].SafeToObject<float>();
             int minUnit = JObject.Parse(minUnitResultJson)["Data"][0]["Szxdw"].SafeToObject<int>();
 
@@ -217,12 +217,12 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
     public HttpClient httpClient => m_httpClient;
 
     // 是不是初始化浏览器
-    private bool m_isInit = false;
+    private bool m_isBrowserInit = false;
 
     // 是不是登录了交易系统
     private bool m_isLoggedIn = false;
 
-    public bool isInit => m_isInit;
+    public bool isInit => m_isBrowserInit;
 
     public bool isLoggedIn => m_isLoggedIn;
 
@@ -257,7 +257,7 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
     {
         m_positionUpdateTaskCancellation = false;
         m_revokeUpdateTaskCancellation = false;
-        m_validateKey = m_browserLogin.GetWebElement(By.CssSelector("input[type='hidden']")).GetAttribute("value");
+        m_validateKey = m_browserLogin.WaitElementWithReturnValue(By.CssSelector("input[type='hidden']"), 5).GetAttribute("value");
         WidgetManagement.GetWidget<EastMoneyTradeLoginWindow>().isOpened = false;
 
         var cookies = m_browserLogin.GetCookies();
@@ -285,9 +285,10 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
             // 记录登陆状态，抛出事件，并关闭所有浏览器窗口,回到登录界面
             WidgetManagement.GetWidget<MessageBox>().SetContent("交易系统提醒", "您已经登录了超过3个小时，该重新登陆了!");
             Instance.m_isLoggedIn = false;
+            Instance.m_isBrowserInit = false;
             LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.LoginStateChanged, false);
             ShutDownUpdateTask();
-        }, 10800000);
+        }, 10800000, 1);
 
         // 记录登陆状态
         m_isLoggedIn = true;
@@ -314,10 +315,10 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
         //     return;
         // }
 
-        if (!Instance.isInit)
+        if (!Instance.m_isBrowserInit)
         {
             Instance.m_browserLogin.Init();
-            Instance.m_isInit = true;
+            Instance.m_isBrowserInit = true;
 
             LifecycleManager.Instance.Get<EventManager>().AddEventHandler(EventType.LoginButtonClicked, (object[] parameters) =>
             {

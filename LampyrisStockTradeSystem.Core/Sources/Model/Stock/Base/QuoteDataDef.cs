@@ -118,6 +118,11 @@ public class KLineData
     /// 均值数据
     /// </summary>
     public MAIndicator maData;
+
+    /// <summary>
+    /// 昨日收盘
+    /// </summary>
+    public float lastClosePrice;
 }
 
 /// <summary>
@@ -448,6 +453,11 @@ public class RealTimeQuoteData
     /// 实时K线数据，包含了价格，成交量，换手率等数据
     /// </summary>
     public KLineData kLineData = new KLineData();
+
+    /// <summary>
+    /// 分时数据，包括每分钟的数据
+    /// </summary>
+    public List<KLineData> minuteData = new List<KLineData>();
 
     /// <summary>
     /// 成交明细

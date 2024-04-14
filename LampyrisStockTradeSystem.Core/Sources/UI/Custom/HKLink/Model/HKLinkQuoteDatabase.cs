@@ -62,7 +62,7 @@ public class HKLinkStockPortraitDataUpdateAsyncOperation : AsyncOperation
         for(int i = 0; i < stockCodeList.Count;i++)
         {
             string stockCode = stockCodeList[i];
-            string url = StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.KLineData, UrlUtil.GetStockCodeParam(stockCode), m_dateTimeStartString, m_dateTimeEndString);
+            string url = StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.KLineData, "101", UrlUtil.GetStockCodeParam(stockCode), m_dateTimeStartString, m_dateTimeEndString);
             m_httpRequestInternal.GetSync(url, (json) =>
             {
                 HKLinkStockPortrait hKLinkStockPortrait = new HKLinkStockPortrait()

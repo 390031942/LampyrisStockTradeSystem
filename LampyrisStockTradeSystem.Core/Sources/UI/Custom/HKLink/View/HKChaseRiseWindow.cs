@@ -6,6 +6,7 @@
 
 using ImGuiNET;
 using Newtonsoft.Json.Linq;
+using System.Globalization;
 using System.Linq;
 using System.Numerics;
 
@@ -111,7 +112,6 @@ public class HKChaseRiseWindow : Widget
 
                                     // 更新股票的实时行情
                                     StockRealTimeQuoteData realTimeQuoteData = (StockRealTimeQuoteData)stockData.quoteData.realTimeQuoteData;
-
                                     realTimeQuoteData.kLineData.closePrice = stockObject["f2"].SafeToObject<float>(); // 现价
                                     realTimeQuoteData.kLineData.percentage = stockObject["f3"].SafeToObject<float>(); // 涨幅
                                     realTimeQuoteData.kLineData.priceChange = stockObject["f4"].SafeToObject<float>(); // 涨跌额
@@ -204,6 +204,50 @@ public class HKChaseRiseWindow : Widget
                                     int ms = DateTime.Now.Millisecond;
                                     if (ms - stockData.lastUnusualTimestamp > 300 * 1000 || stockData.lastUnusualTimestamp <= 0)
                                     {
+                                        string url = StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.KLineData, "1", UrlUtil.GetStockCodeParam(stockData.quoteData.code), "19900101", "20991231");
+                                        if(realTimeQuoteData.minuteData.Count > 0) // 做增量
+                                        {
+                                            
+                                        }
+                                        else // 全量
+                                        {
+                                            HttpRequest.Get(url, (json) =>
+                                            {
+                                                string strippedJson = JsonStripperUtil.GetEastMoneyStrippedJson(json);
+                                                JObject jsonRoot = JObject.Parse(strippedJson);
+
+                                                JArray stockDataArray = jsonRoot?["data"]?["klines"]?.ToObject<JArray>();
+                                                if (stockDataArray != null)
+                                                {
+                                                    realTimeQuoteData.kLineData.lastClosePrice = jsonRoot?["data"]?["preKPrice"]?.SafeToObject<float>() ?? 0.0f;
+                                                    for (int i = 0; i < stockDataArray.Count; i++)
+                                                    {
+                                                        string kLineDataString = stockDataArray[i].ToString();
+
+                                                        {
+                                                            // 每一行的数据格式
+                                                            // 时间,开盘价,收盘价,最高价,最低价,成交量,成交额,振幅,涨跌幅,涨跌额,换手率
+                                                            string[] strings = kLineDataString.Split(',');
+
+                                                            KLineData kLineData = new KLineData();
+                                                            kLineData.date = DateTime.ParseExact(strings[0], "yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
+                                                            kLineData.openPrice = float.Parse(strings[1]);
+                                                            kLineData.closePrice = float.Parse(strings[2]);
+                                                            kLineData.highestPrice = float.Parse(strings[3]);
+                                                            kLineData.lowestPrice = float.Parse(strings[4]);
+                                                            kLineData.volume = float.Parse(strings[5]);
+                                                            kLineData.money = float.Parse(strings[6]);
+                                                            kLineData.amplitude = float.Parse(strings[7]);
+                                                            kLineData.percentage = float.Parse(strings[8]);
+                                                            kLineData.priceChange = float.Parse(strings[9]);
+                                                            kLineData.turnOverRate = float.Parse(strings[10]);
+
+                                                            realTimeQuoteData.minuteData.Add(kLineData);
+                                                        }
+                                                    }
+                                                }
+                                            });
+                                        }
                                         m_displayingStockData.Add(stockData);
                                         m_stockCode2DisplayingDataIndex[stockData.quoteData.code] = m_displayingStockData.Count - 1;
                                         stockData.lastUnusualTimestamp = ms;
@@ -390,13 +434,17 @@ public class HKChaseRiseWindow : Widget
                                   quoteData.quoteData.code + " " +
                                   quoteData.quoteData.name;
 
-                    string displayInfo = "现价:" + quoteData.quoteData.realTimeQuoteData.kLineData.closePrice + "\n" +
-                                         "涨幅:" + quoteData.quoteData.realTimeQuoteData.kLineData.percentage + "%%\n" +
-                                         "涨速:" + ((StockRealTimeQuoteData)(quoteData.quoteData.realTimeQuoteData)).riseSpeed + "%%\n" +
+                    var minuteDataList = ((StockRealTimeQuoteData)(quoteData.quoteData.realTimeQuoteData)).minuteData;
+
+                    string coloredInfo = "现价:" + quoteData.quoteData.realTimeQuoteData.kLineData.closePrice + "\n" +
+                                         "涨幅:" + quoteData.quoteData.realTimeQuoteData.kLineData.percentage + "%%";
+                    string otherInfo = "涨速:" + ((StockRealTimeQuoteData)(quoteData.quoteData.realTimeQuoteData)).riseSpeed + "%%\n" +
                                          "成交额:" + StringUtility.GetMoneyString(quoteData.quoteData.realTimeQuoteData.kLineData.money) + "\n" +
                                          "成交额排位: 前" + (int)(100 * quoteData.moneyRank) + "%%\n" +
                                          "近一年最大涨幅:" + percentage + "%%\n近一年涨幅评分:" + score + "\n" +
-                                         "异动检测时间:" + quoteData.lastUnusualTime;
+                                         "异动检测时间:" + quoteData.lastUnusualTime + "\n";
+
+                    otherInfo += "上一(第一)分钟成交额:" + StringUtility.GetMoneyString(minuteDataList[minuteDataList.Count == 1 ? 0 : minuteDataList.Count - 2].money,round2:1);
 
                     var nameColor = AppUIStyle.Instance.normalWhiteColor;
                     if (HKLinkSpeicalStockData.Instance.speicalExStockDataSet.Contains(quoteData.quoteData.name))
@@ -404,10 +452,16 @@ public class HKChaseRiseWindow : Widget
                     else if (HKLinkSpeicalStockData.Instance.speicalStockDataSet.Contains(quoteData.quoteData.name))
                         nameColor = AppUIStyle.Instance.tipYellowColor;
 
+                    var quoteColor = AppUIStyle.Instance.normalWhiteColor;
                     ImGui.PushStyleColor(ImGuiCol.Text, nameColor);
                     ImGui.Text(name); // 显示股票名称
                     ImGui.PopStyleColor();
-                    ImGui.Text(displayInfo); // 显示股票名称
+
+                    ImGui.PushStyleColor(ImGuiCol.Text, AppUIStyle.Instance.GetRiseFallColor(quoteData.quoteData.realTimeQuoteData.kLineData.percentage));
+                    ImGui.Text(coloredInfo);
+                    ImGui.PopStyleColor();
+
+                    ImGui.Text(otherInfo);
 
                     ImGui.TableNextColumn();
                     // 分时图
@@ -440,7 +494,11 @@ public class HKChaseRiseWindow : Widget
                                 quoteData.isReloadToday = false;
                             }
 
-                            ImGui.Image((IntPtr)quoteData.todayImageTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
+                            ImGui.Image((IntPtr)quoteData.todayImageTextureId, 1.5f * new Vector2(286, 150));
+                            if(ImGui.IsItemClicked())
+                            {
+                                WidgetManagement.GetWidget<StockIntradayDataWindow>().SetQuoteData(quoteData.quoteData.code,quoteData.quoteData.name,(StockRealTimeQuoteData)quoteData.quoteData.realTimeQuoteData);
+                            }
                         }
                         else
                         {
@@ -451,6 +509,10 @@ public class HKChaseRiseWindow : Widget
                                 quoteData.loadTodayImageTask = httpClient.GetByteArrayAsync($"http://webquotepic.eastmoney.com/GetPic.aspx?imageType=r&nid=116.{quoteData.quoteData.code}&timespan=1712254059");
                             }
                             ImGui.Image((IntPtr)quoteData.todayImageTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
+                            if (ImGui.IsItemClicked())
+                            {
+                                WidgetManagement.GetWidget<StockIntradayDataWindow>().SetQuoteData(quoteData.quoteData.code, quoteData.quoteData.name,(StockRealTimeQuoteData)quoteData.quoteData.realTimeQuoteData);
+                            }
                         }
                     }
                     ImGui.TableNextColumn();

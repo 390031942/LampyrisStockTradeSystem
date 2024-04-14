@@ -237,6 +237,7 @@ public static class WidgetManagement
 
             foreach (var widget in m_needRemoveWidgetList)
             {
+                widget.OnDestroy();
                 pair.Value.Remove(widget);
             }
         }
