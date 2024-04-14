@@ -66,7 +66,7 @@ public class HKChaseRiseWindow : Widget
     /// <summary>
     /// 刷新港股通所有股票的行情
     /// </summary>
-    [PlannedTask(executeTime = "09:29-16:10", executeMode = PlannedTaskExecuteMode.ExecuteDuringTime | PlannedTaskExecuteMode.ExecuteOnLaunch, intervalMs = 1000)]
+    [PlannedTask(executeTime = "09:30-16:00", executeMode = PlannedTaskExecuteMode.ExecuteDuringTime | PlannedTaskExecuteMode.ExecuteOnLaunch, intervalMs = 1000)]
     public static void RefreshHKStockQuote()
     {
         HttpRequest.Get(StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.HKLink), (string json) => {
