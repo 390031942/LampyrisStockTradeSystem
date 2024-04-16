@@ -256,14 +256,13 @@ public class HKChaseRiseWindow : Widget
                                         {
                                             continue;
                                         }
-                                        {
-                                            stockData.recent2MinMaxMoney = realTimeQuoteData.recent2MinMaxMoney;
-                                            m_displayingStockData.Add(stockData);
-                                            m_stockCode2DisplayingDataIndex[stockData.quoteData.code] = m_displayingStockData.Count - 1;
-                                            stockData.lastUnusualTimestamp = ms;
-                                            stockData.lastUnusualTime = DateTime.Now.ToString("hh:mm:ss");
-                                            hasNew = true;
-                                        }
+
+                                        stockData.recent2MinMaxMoney = realTimeQuoteData.recent2MinMaxMoney;
+                                        m_displayingStockData.Add(stockData);
+                                        m_stockCode2DisplayingDataIndex[stockData.quoteData.code] = m_displayingStockData.Count - 1;
+                                        stockData.lastUnusualTimestamp = ms;
+                                        stockData.lastUnusualTime = DateTime.Now.ToString("hh:mm:ss");
+                                        hasNew = true;
                                     }
                                 }
                             }
