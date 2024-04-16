@@ -43,7 +43,7 @@ public class HKChaseRiseQuoteData
 
 public enum HKStockUnusualStrategy
 {
-    [NamedValue("涨速≥1.5%(对于股价≤1.5元的涨速≥2%),且成交金额排位前50%")]
+    [NamedValue("涨速≥1.5%(对于股价≤1.5元的涨速≥2%)")]
     RiseSpeedNormal = 1,
 
     [NamedValue("涨速≥5%(无视成交金额排位)")]

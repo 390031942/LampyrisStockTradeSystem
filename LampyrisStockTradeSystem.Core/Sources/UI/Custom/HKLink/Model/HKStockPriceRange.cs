@@ -47,12 +47,34 @@ public class HKStockPriceRange
         }
         // 如果没有找到满足条件的元素，返回null。
         return null;
+    }
 
+
+    public static float GetCorrectPrice(float price,int round = 3)
+    {
+        HKStockPriceRange priceRange = GetPriceRange(price);
+        if(priceRange != null)
+        {
+            double quotient = price /priceRange.priceDelta;
+
+            if (quotient == (int)quotient)
+            {
+                return price;
+            }
+            else
+            {
+                int nextMultiple = (int)quotient + 1;
+                double corrected = nextMultiple * priceRange.priceDelta;
+                return (float)Math.Round(corrected,round);
+            }
+        }
+
+        return price;
     }
 
     private static List<HKStockPriceRange> fs_priceRangeDataList = new List<HKStockPriceRange>()
     {
-        new HKStockPriceRange(0.010f, 0.100f, 0.001f),
+        new HKStockPriceRange(0.001f, 0.100f, 0.001f),
         new HKStockPriceRange(0.100f, 0.200f, 0.001f),
         new HKStockPriceRange(0.200f, 0.250f, 0.001f),
         new HKStockPriceRange(0.250f, 0.400f, 0.005f),

@@ -8,10 +8,29 @@ using ImGuiNET;
 using LampyrisStockTradeSystemInternal;
 using Newtonsoft.Json.Linq;
 using System.Globalization;
-using System.Linq;
 using System.Numerics;
 
 namespace LampyrisStockTradeSystem;
+
+public enum HkChaseRiseAutoSellStrategy
+{
+    [NamedValue("1.5")]
+    Percentage1_5 = 1,
+
+    [NamedValue("2")]
+    Percentage2 = 2,
+
+    [NamedValue("3")]
+    Percentage3 = 3,
+
+    [NamedValue("5")]
+    Percentage55 = 4,
+
+    [NamedValue("7")]
+    Percentage7 = 5,
+
+    Count = 5,
+}
 
 [UniqueWidget]
 public class HKChaseRiseWindow : Widget
@@ -160,7 +179,7 @@ public class HKChaseRiseWindow : Widget
                                 if ((AppSettings.Instance.unusualStrategy & (1 << (int)HKStockUnusualStrategy.RiseSpeedNormal)) != 0)
                                 {
                                     satisfield = ((realTimeQuoteData.kLineData.closePrice > 1.5f ? (realTimeQuoteData.riseSpeed > 1.5f) : (realTimeQuoteData.riseSpeed > 2.0f)));
-                                    satisfield &= stockData.moneyRank < 0.5f;
+                                    // satisfield &= stockData.moneyRank < 0.5f; 成交额排位暂时干掉
                                     satisfieldTotal |= satisfield;
                                 }
 
@@ -610,6 +629,26 @@ public class HKChaseRiseWindow : Widget
                         }
                     }
                     ImGui.PopID();
+
+                    for(int k = 1;k <= (int)HkChaseRiseAutoSellStrategy.Count;k++)
+                    {
+                        ImGui.PushID($"HKChaseRiseTotalViewBuyBtn{i}_{k}");
+                        string strategyName = EnumNameManager.GetName((HkChaseRiseAutoSellStrategy)k);
+                        float strategyPercentage = float.Parse(strategyName);
+
+                        if (ImGui.Button("跟进+" + strategyName + "%"))
+                        {
+                            if (EastMoneyTradeManager.Instance.isLoggedIn)
+                            {
+                                EastMoneyTradeManager.Instance.ExecuteBuyByRatio(quoteData.quoteData.code, m_tradeOrderRatio, strategyPercentage);
+                            }
+                            else
+                            {
+                                WidgetManagement.GetWidget<MessageBox>().SetContent("跟进股票", "你都没有登录，跟进个锤子哦");
+                            }
+                        }
+                        ImGui.PopID();
+                    }
 
                     ImGui.PushID($"HKChaseRiseTotalViewIgnoreBtn{i}");
                     if (ImGui.Button("忽略"))

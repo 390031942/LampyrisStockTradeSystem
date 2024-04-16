@@ -3,6 +3,7 @@
 ** Contact: gameta@qq.com
 ** Description: 东方财富通交易管理器
 */
+using LafpyrisStockTradeSystef;
 using Newtonsoft.Json.Linq;
 using OpenQA.Selenium;
 using OpenTK.Compute.OpenCL;
@@ -74,10 +75,19 @@ public class EastMonsterTradeHKLinkBuyWaitTask : IEastMonsterTradeWaitTask
     private string m_code;
     private int m_ratio;
 
+    private bool m_supportAutoSell;
+    private float m_autoSellPercentage;
+
     // 查询买卖五档，最大可买，最小股数
     private Task<HttpResponseMessage> m_queryAskBidTask;
     private Task<HttpResponseMessage> m_queryMaxCanBuy;
     private Task<HttpResponseMessage> m_queryMinUnit;
+
+    public void SetAutoSellPercentage(float autoSellPercentage)
+    {
+        m_autoSellPercentage = autoSellPercentage;
+        m_supportAutoSell = true;
+    }
 
     public EastMonsterTradeHKLinkBuyWaitTask(string code,int ratio,
                                              Task<HttpResponseMessage> queryAskBidTask, 
@@ -124,6 +134,119 @@ public class EastMonsterTradeHKLinkBuyWaitTask : IEastMonsterTradeWaitTask
             var resultStatus = resultJson["Status"].SafeToObject<int>();
             var resuleMessage = resultJson["Message"].SafeToObject<int>();
 
+            if (resultStatus == -1) // 成功委托的话，判断要不要自动卖掉
+            {
+                // resultStr = $"委托成功，委托编号:{resultJson["Data"][0]["Wtbh"]}";
+
+                if(m_supportAutoSell)
+                {
+                    try
+                    {
+                        // 计算止盈的价格
+                        price = (1 + m_autoSellPercentage * 0.01f) * price;
+                        price = HKStockPriceRange.GetCorrectPrice(price);
+
+                        requestBody = new StringContent($"stockCode={m_code}&price={price}&amount={shouldBuyUnitCount}&tradeType=3S", Encoding.UTF8, "application/x-www-form-urlencoded");
+
+                        response = httpClient.PostAsync(url, requestBody).Result;
+                        response.EnsureSuccessStatusCode();
+
+                        var resultStrAutoSell = response.Content.ReadAsStringAsync().Result;
+                        resultJson = JObject.Parse(resultStrAutoSell);
+                        resultStatus = resultJson["Status"].SafeToObject<int>();
+                        resuleMessage = resultJson["Message"].SafeToObject<int>();
+
+                        if (resultStatus == 0) 
+                        {
+                            resultStr += $"\n 委托止盈单成功，价格{price},委托编号:{resultJson["Data"][0]["Wtbh"]}";
+                        }
+                        else
+                        {
+                            resultStr += $"\n 委托止盈单失败，结果:{resultJson}";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        resultStr += "\n" + "委托止盈单失败，原因:" + ex.Message;
+                    }
+                }
+            }
+
+            WidgetManagement.GetWidget<MessageBox>().SetContent("买入结果提示", resultStr);
+        }
+        catch (Exception ex)
+        {
+            WidgetManagement.GetWidget<MessageBox>().SetContent("买入结果提示", "报错了:" + ex.ToString());
+        }
+    }
+
+    public EastMonsterTradeWaitTaskStatus GetStatus()
+    {
+        if (m_queryAskBidTask == null || m_queryMaxCanBuy == null || m_queryMinUnit == null)
+            return EastMonsterTradeWaitTaskStatus.Failed;
+
+        if(m_queryAskBidTask.Exception != null || m_queryMaxCanBuy.Exception != null || m_queryMinUnit.Exception != null)
+            return EastMonsterTradeWaitTaskStatus.Failed;
+
+        return (m_queryAskBidTask.IsCompleted && m_queryMaxCanBuy.IsCompleted && m_queryMinUnit.IsCompleted) ? 
+            EastMonsterTradeWaitTaskStatus.Done : EastMonsterTradeWaitTaskStatus.NotReady;
+    }
+}
+
+public class EastMonsterTradeHKLinkSellWaitTask : IEastMonsterTradeWaitTask
+{
+    private string m_code;
+    private int m_ratio;
+
+    // 查询买卖五档，最大可卖，最小股数
+    private Task<HttpResponseMessage> m_queryAskBidTask;
+    private Task<HttpResponseMessage> m_queryMaxCanSell;
+    private Task<HttpResponseMessage> m_queryMinUnit;
+
+    public EastMonsterTradeHKLinkSellWaitTask(string code, int ratio,
+                                              Task<HttpResponseMessage> queryAskBidTask,
+                                              Task<HttpResponseMessage> queryMaxCanSell,
+                                              Task<HttpResponseMessage> queryMinUnit)
+    {
+        m_code = code;
+        m_ratio = ratio;
+        m_queryAskBidTask = queryAskBidTask;
+        m_queryMaxCanSell = queryMaxCanSell;
+        m_queryMinUnit = queryMinUnit;
+    }
+
+    public void Execute()
+    {
+        try
+        {
+            m_queryAskBidTask.Result.EnsureSuccessStatusCode();
+            m_queryMaxCanSell.Result.EnsureSuccessStatusCode();
+            m_queryMinUnit.Result.EnsureSuccessStatusCode();
+
+            string askBidResultJson = m_queryAskBidTask.Result.Content.ReadAsStringAsync().Result;
+            string canSellResultJson = m_queryMaxCanSell.Result.Content.ReadAsStringAsync().Result;
+            string minUnitResultJson = m_queryMinUnit.Result.Content.ReadAsStringAsync().Result;
+
+            string askBidResultStrippedJson = JsonStripperUtil.GetEastMoneyStrippedJson(askBidResultJson);
+            float price = JObject.Parse(askBidResultStrippedJson)["fivequote"]["buy" + AppSettings.Instance.bidLevel].SafeToObject<float>();
+            float positionCount = JObject.Parse(canSellResultJson)["Data"][0]["Zdjysl"].SafeToObject<float>();
+            int minUnit = JObject.Parse(minUnitResultJson)["Data"][0]["Szxdw"].SafeToObject<int>();
+
+            var validateKey = EastMoneyTradeManager.Instance.validateKey;
+            var httpClient = EastMoneyTradeManager.Instance.httpClient;
+
+            int count = (int)Math.Floor(positionCount / m_ratio);
+
+            var url = $"https://jywg.18.cn/HKTrade/SubmitTrade?validateKey={validateKey}";
+            var requestBody = new StringContent($"stockCode={m_code}&price={price}&amount={count}&tradeType=3S", Encoding.UTF8, "application/x-www-form-urlencoded");
+            var response = httpClient.PostAsync(url, requestBody).Result;
+            response.EnsureSuccessStatusCode();
+
+            var resultStr = response.Content.ReadAsStringAsync().Result;
+            var resultJson = JObject.Parse(resultStr);
+            var resultStatus = resultJson["Status"].SafeToObject<int>();
+            var resuleMessage = resultJson["Message"].SafeToObject<int>();
+
             if (resultStatus == 0)
             {
                 WidgetManagement.GetWidget<MessageBox>().SetContent("买入结果提示", $"委托成功，委托编号:{resultJson["Data"][0]["wtbh"]}");
@@ -141,13 +264,95 @@ public class EastMonsterTradeHKLinkBuyWaitTask : IEastMonsterTradeWaitTask
 
     public EastMonsterTradeWaitTaskStatus GetStatus()
     {
-        if (m_queryAskBidTask == null || m_queryMaxCanBuy == null || m_queryMinUnit == null)
+        if (m_queryAskBidTask == null || m_queryMaxCanSell == null || m_queryMinUnit == null)
             return EastMonsterTradeWaitTaskStatus.Failed;
 
-        if(m_queryAskBidTask.Exception != null || m_queryMaxCanBuy.Exception != null || m_queryMinUnit.Exception != null)
+        if (m_queryAskBidTask.Exception != null || m_queryMaxCanSell.Exception != null || m_queryMinUnit.Exception != null)
             return EastMonsterTradeWaitTaskStatus.Failed;
 
-        return (m_queryAskBidTask.IsCompleted && m_queryMaxCanBuy.IsCompleted && m_queryMinUnit.IsCompleted) ? 
+        return (m_queryAskBidTask.IsCompleted && m_queryMaxCanSell.IsCompleted && m_queryMinUnit.IsCompleted) ?
+            EastMonsterTradeWaitTaskStatus.Done : EastMonsterTradeWaitTaskStatus.NotReady;
+    }
+}
+
+public class EastMonsterTradeHKLinkQueryWaitTask : IEastMonsterTradeWaitTask
+{ 
+    // 查询持仓数据
+    private Task<HttpResponseMessage> m_queryPositionTask;
+
+    // 查询撤单数据
+    private Task<HttpResponseMessage> m_queryRevokeTask;
+
+
+    public EastMonsterTradeHKLinkQueryWaitTask(Task<HttpResponseMessage> queryPositionTask,Task<HttpResponseMessage> queryRevokeask)
+    {
+        m_queryPositionTask = queryPositionTask;
+        m_queryRevokeTask = queryRevokeask;
+    }
+
+    public void Execute()
+    {
+        try
+        {
+            m_queryPositionTask.Result.EnsureSuccessStatusCode();
+            m_queryRevokeTask.Result.EnsureSuccessStatusCode();
+
+            {
+                string positionJson = m_queryPositionTask.Result.Content.ReadAsStringAsync().Result;
+                JArray dataArray = JObject.Parse(positionJson)["Data"].ToObject<JArray>();
+                for (int i = 0; i < dataArray.Count;i++)
+                {
+                    JObject jObject = dataArray[i].ToObject<JObject>();
+                    EastMoneyPositionStockInfo positionInfo = new EastMoneyPositionStockInfo();
+                    positionInfo.stockCode = jObject["Zqdm"].SafeToObject<string>();
+                    positionInfo.stockName = jObject["Zqmc"].SafeToObject<string>();
+                    positionInfo.count = jObject["Kysl"].SafeToObject<string>();
+                    positionInfo.money = jObject["Zxsz"].SafeToObject<string>();
+                    positionInfo.profitLose = jObject["Ckyk"].SafeToObject<string>();
+                    positionInfo.profitLoseRatio = jObject["Ykbl"].SafeToObject<string>();
+                }
+
+                
+                LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.PositionUpdate);
+            }
+
+            //撤单：
+            // https://jywg.18.cn/HKTrade/GetRevokeList form: qqhs=20&dwc=1
+            // https://jywg.18.cn/HKTrade/RevokeOrders form=日期_委托号
+            {
+                string revokeJson = m_queryRevokeTask.Result.Content.ReadAsStringAsync().Result;
+                JArray dataArray = JObject.Parse(revokeJson)["Data"].ToObject<JArray>();
+                for (int i = 0; i < dataArray.Count; i++)
+                {
+                    JObject jObject = dataArray[i].ToObject<JObject>();
+                    EastMoneyRevokeStockInfo positionInfo = new EastMoneyRevokeStockInfo();
+                    positionInfo.stockCode = jObject["Zqdm"].SafeToObject<string>();
+                    positionInfo.stockName = jObject["Zqmc"].SafeToObject<string>();
+                    positionInfo.isBuy = jObject["Mmlb"].SafeToObject<string>().Contains("买");
+                    positionInfo.orderCount = jObject["Wtsl"].SafeToObject<int>();
+                    positionInfo.dealCount = jObject["Cjsl"].SafeToObject<int>();
+                    positionInfo.id = jObject["Wtch"].SafeToObject<int>();
+                }
+
+                LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.RevokeUpdate);
+            }
+
+        }
+        catch (Exception ex)
+        {
+            WidgetManagement.GetWidget<MessageBox>().SetContent("查询持仓与撤单结果", "报错了:" + ex.ToString());
+        }
+    }
+
+    public EastMonsterTradeWaitTaskStatus GetStatus()
+    {
+        if (m_queryPositionTask == null || m_queryRevokeTask == null)
+            return EastMonsterTradeWaitTaskStatus.Failed;
+
+        if (m_queryPositionTask.Exception != null || m_queryRevokeTask.Exception != null)
+            return EastMonsterTradeWaitTaskStatus.Failed;
+
+        return (m_queryPositionTask.IsCompleted && m_queryRevokeTask.IsCompleted) ?
             EastMonsterTradeWaitTaskStatus.Done : EastMonsterTradeWaitTaskStatus.NotReady;
     }
 }
@@ -337,7 +542,7 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
         }
     }
 
-    public void ExecuteBuyByRatio(string code, int ratio)
+    public void ExecuteBuyByRatio(string code, int ratio, float autoSellPercentgage = 0.0f)
     {
         // 请求买卖五档行情
         var urlAskBid = $"https://hkmarketzp.eastmoney.com/api/HKQuoteSnapshot?id=HK|{code}&auth=5&type=1&DC_APP_KEY=dcquotes-service-tweb&DC_TIMESTAMP=1712677182450&DC_SIGN=3C8A0614551E0CC5BF6185D5ACCFA030&callback={AppConfig.jQueryString}&_=1712677182450";
@@ -351,6 +556,10 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
                                                              m_httpClient.PostAsync(maxCanBuy, null), 
                                                              m_httpClient.PostAsync(minUnit, minUnitContent));
 
+        if(autoSellPercentgage > 0f)
+        {
+            waitTask.SetAutoSellPercentage(autoSellPercentgage);
+        }
         m_tradeWaitTask.Add(waitTask);
     }
 
@@ -365,7 +574,20 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     public void ExecuteSellByRatio(string code, int ratio)
     {
-        
+        // 请求买卖五档行情
+        var urlAskBid = $"https://hkmarketzp.eastmoney.com/api/HKQuoteSnapshot?id=HK|{code}&auth=5&type=1&DC_APP_KEY=dcquotes-service-tweb&DC_TIMESTAMP=1712677182450&DC_SIGN=3C8A0614551E0CC5BF6185D5ACCFA030&callback={AppConfig.jQueryString}&_=1712677182450";
+        var maxCanSell = $"https://jywg.18.cn/HKTrade/GetMaxTradeCount?validatekey={m_validateKey}";
+        var minUnit = $"https://jywg.18.cn/Com/GetZqInfo?validatekey={m_validateKey}";
+
+        var maxCanSellContent = new StringContent($"zqdm={code}&mmlb=3S&price=23.200", Encoding.UTF8, "application/x-www-form-urlencoded");
+        var minUnitContent = new StringContent($"zqdm={code}&market=5", Encoding.UTF8, "application/x-www-form-urlencoded");
+
+        var waitTask = new EastMonsterTradeHKLinkBuyWaitTask(code, ratio,
+                                                             m_httpClient.GetAsync(urlAskBid),
+                                                             m_httpClient.PostAsync(maxCanSell, maxCanSellContent),
+                                                             m_httpClient.PostAsync(minUnit, minUnitContent));
+
+        m_tradeWaitTask.Add(waitTask);
     }
 
     public void ExecuteSellByCount(string code, int count)
@@ -421,7 +643,7 @@ public class EastMoneyTradeManager : Singleton<EastMoneyTradeManager>, ILifecycl
 
     private void HandlePositionUpdate()
     {
-        // LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.PositionUpdate, m_positionInfo);
+        LifecycleManager.Instance.Get<EventManager>().RaiseEvent(EventType.PositionUpdate, m_positionInfo);
     }
 
     private void HandleRevokeUpdate()
