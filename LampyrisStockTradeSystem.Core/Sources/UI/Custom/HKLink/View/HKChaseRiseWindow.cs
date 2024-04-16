@@ -200,11 +200,6 @@ public class HKChaseRiseWindow : Widget
                                     satisfieldTotal |= satisfield;
                                 }
 
-                                if(realTimeQuoteData.recent2MinMaxMoney < 500000f)
-                                {
-                                    satisfieldTotal = false;
-                                }
-
                                 if (satisfieldTotal)
                                 {
                                     int ms = DateTime.Now.Millisecond;
@@ -257,6 +252,10 @@ public class HKChaseRiseWindow : Widget
                                             });
                                         }
 
+                                        if (realTimeQuoteData.recent2MinMaxMoney < 500000f)
+                                        {
+                                            continue;
+                                        }
                                         {
                                             stockData.recent2MinMaxMoney = realTimeQuoteData.recent2MinMaxMoney;
                                             m_displayingStockData.Add(stockData);
