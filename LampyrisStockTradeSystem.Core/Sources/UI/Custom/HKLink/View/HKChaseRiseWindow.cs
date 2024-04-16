@@ -5,6 +5,7 @@
 */
 
 using ImGuiNET;
+using LampyrisStockTradeSystemInternal;
 using Newtonsoft.Json.Linq;
 using System.Globalization;
 using System.Linq;
@@ -211,8 +212,10 @@ public class HKChaseRiseWindow : Widget
                                         }
                                         else // 全量
                                         {
-                                            HttpRequest.Get(url, (json) =>
+                                            HttpRequestInternal m_httpRequestSync = new HttpRequestInternal();
+                                            m_httpRequestSync.GetSync(url, (json) =>
                                             {
+
                                                 string strippedJson = JsonStripperUtil.GetEastMoneyStrippedJson(json);
                                                 JObject jsonRoot = JObject.Parse(strippedJson);
 
@@ -248,11 +251,19 @@ public class HKChaseRiseWindow : Widget
                                                 }
                                             });
                                         }
-                                        m_displayingStockData.Add(stockData);
-                                        m_stockCode2DisplayingDataIndex[stockData.quoteData.code] = m_displayingStockData.Count - 1;
-                                        stockData.lastUnusualTimestamp = ms;
-                                        stockData.lastUnusualTime = DateTime.Now.ToString("hh:mm:ss");
-                                        hasNew = true;
+
+                                        var minuteDataList = realTimeQuoteData.minuteData;
+                                        if(minuteDataList.Count > 0)
+                                        {
+                                            if (minuteDataList[minuteDataList.Count == 1 ? 0 : minuteDataList.Count - 2].money > 500000f)
+                                            {
+                                                m_displayingStockData.Add(stockData);
+                                                m_stockCode2DisplayingDataIndex[stockData.quoteData.code] = m_displayingStockData.Count - 1;
+                                                stockData.lastUnusualTimestamp = ms;
+                                                stockData.lastUnusualTime = DateTime.Now.ToString("hh:mm:ss");
+                                                hasNew = true;
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -438,8 +449,8 @@ public class HKChaseRiseWindow : Widget
 
                     string coloredInfo = "现价:" + quoteData.quoteData.realTimeQuoteData.kLineData.closePrice + "\n" +
                                          "涨幅:" + quoteData.quoteData.realTimeQuoteData.kLineData.percentage + "%%";
-                    string otherInfo = "涨速:" + ((StockRealTimeQuoteData)(quoteData.quoteData.realTimeQuoteData)).riseSpeed + "%%\n" +
-                                         "成交额:" + StringUtility.GetMoneyString(quoteData.quoteData.realTimeQuoteData.kLineData.money) + "\n" +
+                    string coloredInfo1 = "涨速:" + ((StockRealTimeQuoteData)(quoteData.quoteData.realTimeQuoteData)).riseSpeed + "%%\n";
+                    string otherInfo = "成交额:" + StringUtility.GetMoneyString(quoteData.quoteData.realTimeQuoteData.kLineData.money) + "\n" +
                                          "成交额排位: 前" + (int)(100 * quoteData.moneyRank) + "%%\n" +
                                          "近一年最大涨幅:" + percentage + "%%\n近一年涨幅评分:" + score + "\n" +
                                          "异动检测时间:" + quoteData.lastUnusualTime + "\n";
@@ -459,6 +470,10 @@ public class HKChaseRiseWindow : Widget
 
                     ImGui.PushStyleColor(ImGuiCol.Text, AppUIStyle.Instance.GetRiseFallColor(quoteData.quoteData.realTimeQuoteData.kLineData.percentage));
                     ImGui.Text(coloredInfo);
+                    ImGui.PopStyleColor();
+
+                    ImGui.PushStyleColor(ImGuiCol.Text, AppUIStyle.Instance.GetRiseFallColor(((StockRealTimeQuoteData)(quoteData.quoteData.realTimeQuoteData)).riseSpeed));
+                    ImGui.Text(coloredInfo1);
                     ImGui.PopStyleColor();
 
                     ImGui.Text(otherInfo);
