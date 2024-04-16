@@ -37,6 +37,8 @@ public class HKChaseRiseQuoteData
     public int lastUnusualTimestamp = -1;
 
     public string lastUnusualTime;
+
+    public float recent2MinMaxMoney;
 }
 
 public enum HKStockUnusualStrategy

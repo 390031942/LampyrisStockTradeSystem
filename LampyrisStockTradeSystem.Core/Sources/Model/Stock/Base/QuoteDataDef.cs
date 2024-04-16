@@ -468,6 +468,50 @@ public class RealTimeQuoteData
     /// 内外盘信息
     /// </summary>
     public TransactionSumData transactionSumData = new TransactionSumData();
+
+    public float recent2MinMoney
+    {
+        get
+        {
+            float totalMoney = 0.0f;
+            if (minuteData.Count > 0)
+            {
+                if (minuteData.Count == 1)
+                {
+                    totalMoney = minuteData[0].money;
+                }
+                else
+                {
+                    totalMoney = minuteData[minuteData.Count - 1].money +
+                                 minuteData[minuteData.Count - 2].money;
+                }
+            }
+
+            return totalMoney;
+        }
+    }
+
+    public float recent2MinMaxMoney
+    {
+        get
+        {
+            float max = 0.0f;
+            if (minuteData.Count > 0)
+            {
+                if (minuteData.Count == 1)
+                {
+                    max = minuteData[0].money;
+                }
+                else
+                {
+                    max = Math.Max(minuteData[minuteData.Count - 1].money,
+                                   minuteData[minuteData.Count - 2].money);
+                }
+            }
+
+            return max;
+        }
+    }
 }
 
 /// <summary>

@@ -200,8 +200,7 @@ public class HKChaseRiseWindow : Widget
                                     satisfieldTotal |= satisfield;
                                 }
 
-                                var minuteDataList = realTimeQuoteData.minuteData;
-                                if (!((minuteDataList.Count > 0) && (minuteDataList[minuteDataList.Count == 1 ? 0 : minuteDataList.Count - 2].money > 500000f)))
+                                if(realTimeQuoteData.recent2MinMaxMoney < 500000f)
                                 {
                                     satisfieldTotal = false;
                                 }
@@ -259,6 +258,7 @@ public class HKChaseRiseWindow : Widget
                                         }
 
                                         {
+                                            stockData.recent2MinMaxMoney = realTimeQuoteData.recent2MinMaxMoney;
                                             m_displayingStockData.Add(stockData);
                                             m_stockCode2DisplayingDataIndex[stockData.quoteData.code] = m_displayingStockData.Count - 1;
                                             stockData.lastUnusualTimestamp = ms;
@@ -456,7 +456,7 @@ public class HKChaseRiseWindow : Widget
                                          "近一年最大涨幅:" + percentage + "%%\n近一年涨幅评分:" + score + "\n" +
                                          "异动检测时间:" + quoteData.lastUnusualTime + "\n";
 
-                    otherInfo += "上一(第一)分钟成交额:" + StringUtility.GetMoneyString(minuteDataList[minuteDataList.Count == 1 ? 0 : minuteDataList.Count - 2].money,round2:1);
+                    otherInfo += "异动时近2分钟最大成交额:" + StringUtility.GetMoneyString(quoteData.recent2MinMaxMoney,round2:1);
 
                     var nameColor = AppUIStyle.Instance.normalWhiteColor;
                     if (HKLinkSpeicalStockData.Instance.speicalExStockDataSet.Contains(quoteData.quoteData.name))

@@ -64,13 +64,15 @@ public class StatusBar:Singleton<StatusBar>
             }
 
             // 日止按钮
-            if(ImGui.Button("Show Log"))
+            ImGui.SameLine(ImGui.GetIO().DisplaySize.X - 150); // 根据需要调整位置
+
+            if (ImGui.Button("Show Log"))
             {
                 WidgetManagement.GetWidget<DebugLogConsoleWindow>();
             }
 
             // 显示系统时间
-            ImGui.SameLine(ImGui.GetIO().DisplaySize.X - 50); // 根据需要调整位置
+            ImGui.SameLine(ImGui.GetIO().DisplaySize.X - 75); // 根据需要调整位置
             ImGui.Text(DateTime.Now.ToString("HH:mm:ss"));
         }
         ImGui.End();
