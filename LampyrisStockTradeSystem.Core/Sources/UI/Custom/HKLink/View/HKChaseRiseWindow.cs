@@ -200,6 +200,12 @@ public class HKChaseRiseWindow : Widget
                                     satisfieldTotal |= satisfield;
                                 }
 
+                                var minuteDataList = realTimeQuoteData.minuteData;
+                                if (!((minuteDataList.Count > 0) && (minuteDataList[minuteDataList.Count == 1 ? 0 : minuteDataList.Count - 2].money > 500000f)))
+                                {
+                                    satisfieldTotal = false;
+                                }
+
                                 if (satisfieldTotal)
                                 {
                                     int ms = DateTime.Now.Millisecond;
@@ -252,17 +258,12 @@ public class HKChaseRiseWindow : Widget
                                             });
                                         }
 
-                                        var minuteDataList = realTimeQuoteData.minuteData;
-                                        if(minuteDataList.Count > 0)
                                         {
-                                            if (minuteDataList[minuteDataList.Count == 1 ? 0 : minuteDataList.Count - 2].money > 500000f)
-                                            {
-                                                m_displayingStockData.Add(stockData);
-                                                m_stockCode2DisplayingDataIndex[stockData.quoteData.code] = m_displayingStockData.Count - 1;
-                                                stockData.lastUnusualTimestamp = ms;
-                                                stockData.lastUnusualTime = DateTime.Now.ToString("hh:mm:ss");
-                                                hasNew = true;
-                                            }
+                                            m_displayingStockData.Add(stockData);
+                                            m_stockCode2DisplayingDataIndex[stockData.quoteData.code] = m_displayingStockData.Count - 1;
+                                            stockData.lastUnusualTimestamp = ms;
+                                            stockData.lastUnusualTime = DateTime.Now.ToString("hh:mm:ss");
+                                            hasNew = true;
                                         }
                                     }
                                 }
@@ -479,6 +480,7 @@ public class HKChaseRiseWindow : Widget
                     ImGui.Text(otherInfo);
 
                     ImGui.TableNextColumn();
+                    try
                     // 分时图
                     // if (quoteData.displayingToday)
                     {
@@ -530,8 +532,19 @@ public class HKChaseRiseWindow : Widget
                             }
                         }
                     }
+                    catch (Exception e)
+                    {
+                        if(quoteData.todayImageTextureId > 0)
+                        {
+                            // 先释放旧的
+                            Resources.FreeTexture(quoteData.todayImageTextureId);
+                            quoteData.todayImageTextureId = 0;
+                            quoteData.loadTodayImageTask = null;
+                        }
+                    }
                     ImGui.TableNextColumn();
 
+                    try
                     // else
                     {
                         if (quoteData.klineTextureId <= 0)
@@ -574,7 +587,16 @@ public class HKChaseRiseWindow : Widget
                             ImGui.Image((IntPtr)quoteData.klineTextureId, 1.5f * new System.Numerics.Vector2(286, 150));
                         }
                     }
-
+                    catch (Exception e)
+                    {
+                        if (quoteData.klineTextureId > 0)
+                        {
+                            // 先释放旧的
+                            Resources.FreeTexture(quoteData.klineTextureId);
+                            quoteData.klineTextureId = 0;
+                            quoteData.loadkLineImageTask = null;
+                         }
+                    }
                     ImGui.TableNextColumn();
 
                     ImGui.PushID($"HKChaseRiseTotalViewBuyBtn{i}");
