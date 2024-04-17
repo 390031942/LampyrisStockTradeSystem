@@ -134,7 +134,7 @@ public class EastMonsterTradeHKLinkBuyWaitTask : IEastMonsterTradeWaitTask
             var resultStatus = resultJson["Status"].SafeToObject<int>();
             var resuleMessage = resultJson["Message"].SafeToObject<int>();
 
-            if (resultStatus == -1) // 成功委托的话，判断要不要自动卖掉
+            if (resultStatus == 0) // 成功委托的话，判断要不要自动卖掉
             {
                 // resultStr = $"委托成功，委托编号:{resultJson["Data"][0]["Wtbh"]}";
 
