@@ -247,6 +247,7 @@ public class HKChaseRiseWindow : Widget
                                                         string kLineDataString = stockDataArray[i].ToString();
 
                                                         {
+                                                            realTimeQuoteData.minuteData.Clear();
                                                             // 每一行的数据格式
                                                             // 时间,开盘价,收盘价,最高价,最低价,成交量,成交额,振幅,涨跌幅,涨跌额,换手率
                                                             string[] strings = kLineDataString.Split(',');
