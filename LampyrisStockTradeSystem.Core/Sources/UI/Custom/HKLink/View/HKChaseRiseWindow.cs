@@ -225,11 +225,11 @@ public class HKChaseRiseWindow : Widget
                                     if (ms - stockData.lastUnusualTimestamp > 300 * 1000 || stockData.lastUnusualTimestamp <= 0)
                                     {
                                         string url = StockQuoteInterface.Instance.GetQuoteUrl(StockQuoteInterfaceType.KLineData, "1", UrlUtil.GetStockCodeParam(stockData.quoteData.code), "19900101", "20991231");
-                                        if(realTimeQuoteData.minuteData.Count > 0) // 做增量
-                                        {
-                                            
-                                        }
-                                        else // 全量
+                                        // if(realTimeQuoteData.minuteData.Count > 0) // 做增量
+                                        // {
+                                        //     
+                                        // }
+                                        // else // 全量
                                         {
                                             HttpRequestInternal m_httpRequestSync = new HttpRequestInternal();
                                             m_httpRequestSync.GetSync(url, (json) =>
